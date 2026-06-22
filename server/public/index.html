@@ -3,206 +3,301 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>vibefeed · admin</title>
+<title>vibefeed · API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#17162e; --muted:#6b6982; --line:#e7e6f0; --bg:#f6f5fb; --card:#fff;
-    --accent:#7c6cff; --accent2:#3a86ff; --orange:#ff8c42; --green:#34c77b; --red:#ec5b5b;
+    --bg:#fbfaf8; --panel:#fff; --ink:#1a1922; --ink2:#3d3b47; --muted:#7a7884; --faint:#a6a4b0;
+    --line:#ecebe5; --line2:#e3e1da; --accent:#5b50e0; --accent-soft:#efeefc;
+    --code-bg:#17161f; --code-line:#26242f; --code-ink:#cecbdd; --code-dim:#6f6c80; --code-str:#9ce0b4;
+    --get:#1f9d6b; --post:#5b50e0; --del:#d9534f; --ok:#1f9d6b; --bad:#d9534f;
+    --r:9px;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+  html,body{margin:0}
+  body{font-family:'Hanken Grotesk',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  code,kbd,pre,.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
   a{color:var(--accent);text-decoration:none}
-  .app{display:grid;grid-template-columns:228px 1fr;min-height:100vh}
+  button{font-family:inherit;cursor:pointer}
+  .app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+
   /* sidebar */
-  aside{background:#fff;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:6px}
-  .brand{display:flex;align-items:center;gap:9px;padding:4px 8px 16px}
-  .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7c6cff,#3a86ff)}
-  .brand b{font-size:17px}
-  nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;
-    font:inherit;color:var(--muted);padding:9px 11px;border-radius:9px;cursor:pointer;font-weight:600}
-  nav button:hover{background:#f3f1fb;color:var(--ink)}
-  nav button.on{background:#efeaff;color:var(--accent)}
-  .side-foot{margin-top:auto;font-size:11.5px;color:var(--muted);padding:8px}
-  .status{display:flex;align-items:center;gap:6px}
-  .dot{width:8px;height:8px;border-radius:50%;background:#cfced9}
-  .dot.ok{background:var(--green)} .dot.bad{background:var(--red)}
+  aside{border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;background:var(--panel)}
+  .brand{display:flex;align-items:center;gap:9px;padding:2px 8px 20px}
+  .mark{width:25px;height:25px;border-radius:7px;background:var(--ink);position:relative;flex:none}
+  .mark::before{content:"";position:absolute;left:6px;right:6px;top:7px;height:2px;border-radius:2px;background:#fff;box-shadow:0 4px 0 #fff,0 8px 0 rgba(255,255,255,.5)}
+  .brand b{font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+  .navgrp{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:600;margin:18px 10px 5px}
+  nav button{display:block;width:100%;text-align:left;border:none;background:none;color:var(--ink2);
+    padding:7px 10px;border-radius:7px;font-size:13.5px;font-weight:500}
+  nav button:hover{background:#f2f1ec}
+  nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .side-foot{position:absolute;bottom:16px;left:14px;right:14px;font-size:11px;color:var(--muted)}
+  .env{display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)}
+  .env .mono{font-size:10.5px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
   /* main */
-  main{padding:26px 30px;max-width:1000px}
-  h1{font-size:21px;margin:0 0 3px}
-  .sub{color:var(--muted);margin:0 0 22px}
-  .grid{display:grid;gap:14px}
-  .stats{grid-template-columns:repeat(4,1fr)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px}
-  .stat .n{font-size:26px;font-weight:700} .stat .l{color:var(--muted);font-size:12.5px;margin-top:2px}
+  main{padding:38px 46px;max-width:1080px;animation:fade .4s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .panel{display:none} .panel.on{display:block}
-  table{width:100%;border-collapse:collapse}
-  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
-  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
-  .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#f0eefa;color:var(--muted)}
-  .chip.pub{background:#e6f0ff;color:#2b6fd6} .chip.priv{background:#efeaff;color:var(--accent)} .chip.unl{background:#fff2e6;color:#c8702a}
-  label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:0 0 5px}
-  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
-  textarea{resize:vertical;min-height:64px}
-  .row{display:grid;gap:12px} .row.c2{grid-template-columns:1fr 1fr} .row.c3{grid-template-columns:1fr 1fr 1fr}
-  .field{margin-bottom:13px}
-  button.btn{font:inherit;font-weight:600;border:none;border-radius:9px;cursor:pointer;padding:9px 15px;background:var(--accent);color:#fff}
-  button.btn:hover{filter:brightness(1.06)} button.btn.ghost{background:#efeaff;color:var(--accent)} button.btn.sm{padding:6px 10px;font-size:12.5px}
-  button.btn.subtle{background:#f0eefa;color:var(--muted)}
-  .muted{color:var(--muted)} .right{text-align:right} .mt{margin-top:16px} .flex{display:flex;gap:10px;align-items:center}
-  .toast{position:fixed;right:20px;bottom:20px;background:#17162e;color:#fff;padding:11px 15px;border-radius:10px;font-size:13px;opacity:0;transform:translateY(8px);transition:.25s;z-index:9}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:9px}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px}
+  .lede{color:var(--muted);font-size:14.5px;margin:0 0 26px;max-width:60ch}
+  h2{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:34px 0 12px}
+  .hr{height:1px;background:var(--line);margin:30px 0}
+
+  /* endpoint header */
+  .ep{display:flex;align-items:center;gap:10px;margin:0 0 20px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+  .method{font-family:'JetBrains Mono';font-size:11px;font-weight:500;padding:3px 8px;border-radius:5px;letter-spacing:.03em}
+  .method.get{color:var(--get);background:#e7f6ee} .method.post{color:var(--post);background:var(--accent-soft)} .method.del{color:var(--del);background:#fbecec}
+  .ep code{font-size:13px;color:var(--ink2)}
+
+  /* cards / grid */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;background:var(--panel)}
+  .stat .n{font-family:'JetBrains Mono';font-size:23px;font-weight:500;letter-spacing:-.02em}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:3px}
+  .card{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:18px}
+
+  /* split: builder + rail */
+  .split{display:grid;grid-template-columns:1fr 420px;gap:22px;align-items:start}
+  .rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:12px}
+
+  /* form */
+  .field{margin-bottom:14px}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+  label .opt{color:var(--faint);font-weight:400}
+  input,select,textarea{width:100%;padding:8px 11px;border:1px solid var(--line2);border-radius:7px;font:inherit;font-size:13.5px;background:var(--panel);color:var(--ink);transition:border-color .12s,box-shadow .12s}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{resize:vertical;min-height:58px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .range{display:flex;align-items:center;gap:10px}
+  .range input{padding:0} .range .mono{font-size:12px;color:var(--muted);min-width:24px;text-align:right}
+
+  /* code panel */
+  .codecard{border-radius:10px;overflow:hidden;background:var(--code-bg);border:1px solid var(--code-line)}
+  .codetabs{display:flex;align-items:center;gap:2px;padding:7px 8px;border-bottom:1px solid var(--code-line)}
+  .codetabs button{background:none;border:none;color:var(--code-dim);font-family:'JetBrains Mono';font-size:11.5px;padding:4px 9px;border-radius:6px}
+  .codetabs button:hover{color:var(--code-ink)} .codetabs button.on{color:var(--code-ink);background:#26242f}
+  .copy{margin-left:auto;display:flex;align-items:center;gap:5px;color:var(--code-dim) !important}
+  .copy:hover{color:#fff !important}
+  pre.code{margin:0;padding:14px 15px;font-family:'JetBrains Mono';font-size:12px;line-height:1.65;color:var(--code-ink);overflow:auto;white-space:pre}
+  pre.code .s{color:var(--code-str)} pre.code .dim{color:var(--code-dim)}
+
+  /* response */
+  .resp{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+  .resp-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);font-weight:600}
+  .pill{font-family:'JetBrains Mono';font-size:10.5px;padding:2px 7px;border-radius:5px;background:#f0efe9;color:var(--muted)}
+  .pill.ok{background:#e7f6ee;color:var(--ok)} .pill.bad{background:#fbecec;color:var(--bad)}
+  pre.resp-body{margin:0;padding:12px 14px;font-family:'JetBrains Mono';font-size:11.5px;line-height:1.6;color:var(--ink2);overflow:auto;max-height:240px;white-space:pre-wrap;word-break:break-word}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .params th,.tbl th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line)}
+  .params td,.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .params tr:last-child td,.tbl tr:last-child td{border-bottom:none}
+  .params .pname{font-family:'JetBrains Mono';font-size:12.5px;color:var(--ink)}
+  .params .ptype{font-family:'JetBrains Mono';font-size:11px;color:var(--muted)}
+  .params .req{font-size:10px;color:var(--del);font-weight:600;margin-left:6px;letter-spacing:.03em}
+  .params .pdesc{color:var(--ink2);font-size:13px}
+  .tbl{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+  .tbl td .mono{font-size:11.5px;color:var(--muted)}
+  .tag{display:inline-block;font-family:'JetBrains Mono';font-size:11px;padding:2px 8px;border-radius:20px;background:#f0efe9;color:var(--muted)}
+  .tag.pub{background:#e7f6ee;color:var(--get)} .tag.priv{background:var(--accent-soft);color:var(--accent)} .tag.unl{background:#fff3e6;color:#c8702a}
+
+  /* buttons */
+  .btn{font-size:13px;font-weight:600;border:1px solid transparent;border-radius:7px;padding:8px 14px;background:var(--ink);color:#fff;transition:opacity .12s}
+  .btn:hover{opacity:.88}
+  .btn.ghost{background:var(--panel);border-color:var(--line2);color:var(--ink2)}
+  .btn.ghost:hover{background:#f4f3ee;opacity:1}
+  .btn.sm{padding:5px 11px;font-size:12px;font-weight:500}
+  .btn.link{background:none;border:none;color:var(--accent);padding:4px 6px;font-weight:600}
+  .right{display:flex;justify-content:flex-end}
+  .muted{color:var(--muted)}
+  .keyrow{display:flex;gap:8px;align-items:center}
+  .keyrow input{font-family:'JetBrains Mono';font-size:12.5px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:9px}
+  .toast{position:fixed;right:22px;bottom:22px;background:var(--ink);color:#fff;padding:10px 15px;border-radius:8px;font-size:13px;opacity:0;transform:translateY(8px);transition:.22s;z-index:20}
   .toast.show{opacity:1;transform:none}
-  /* card preview */
-  .pcard{width:320px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:0 14px 40px rgba(40,35,90,.14);overflow:hidden}
-  .pcard .pbar{display:flex;justify-content:space-between;align-items:center;padding:9px 13px;font-size:11.5px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line)}
-  .pcard .pdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
-  .pcard img{width:100%;height:120px;object-fit:cover;display:block}
-  .pcard .pb{padding:13px 14px}
-  .pcard .pt{font-weight:600;font-size:15px;line-height:1.3}
-  .pcard .pd{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45}
-  .pcard .pf{padding:6px 14px 11px;display:flex;justify-content:space-between;font-size:10.5px;color:#9b99ad}
-  pre{background:#0f0e1c;color:#d6d4ec;padding:13px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.5}
-  .keyline{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
-  .settings input{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  @media(max-width:920px){.split{grid-template-columns:1fr}.rail{position:static}.cards{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><div class="logo"></div><b>vibefeed</b></div>
+    <div class="brand"><div class="mark"></div><b>vibefeed</b></div>
     <nav id="nav">
-      <button data-tab="overview" class="on">▦ Overview</button>
-      <button data-tab="channels">◎ Channels</button>
-      <button data-tab="push">↑ Push</button>
-      <button data-tab="feed">▶ Live feed</button>
-      <button data-tab="history">⟲ History</button>
-      <button data-tab="settings">⚙ Settings</button>
+      <button data-tab="overview" class="on">Overview</button>
+      <div class="navgrp">Resources</div>
+      <button data-tab="channels">Channels</button>
+      <button data-tab="items">Items</button>
+      <button data-tab="feed">Feed</button>
+      <div class="navgrp">Developers</div>
+      <button data-tab="keys">API keys</button>
+      <button data-tab="settings">Settings</button>
     </nav>
     <div class="side-foot">
-      <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
-      <div id="baseLabel" class="muted" style="margin-top:4px;word-break:break-all"></div>
+      <div class="env"><span class="dot" id="dot"></span><span class="mono" id="envBase">…</span></div>
     </div>
   </aside>
 
   <main>
     <!-- OVERVIEW -->
     <section class="panel on" data-panel="overview">
-      <h1>Overview</h1>
-      <p class="sub">Your local vibefeed bus. Push items onto channels, subscribe, watch delivery.</p>
-      <div class="grid stats">
-        <div class="card stat"><div class="n" id="s_channels">–</div><div class="l">Channels</div></div>
-        <div class="card stat"><div class="n" id="s_items">–</div><div class="l">Items</div></div>
-        <div class="card stat"><div class="n" id="s_subs">–</div><div class="l">Subscriptions</div></div>
-        <div class="card stat"><div class="n" id="s_hist">–</div><div class="l">Delivered</div></div>
+      <div class="eyebrow">API</div>
+      <h1>vibefeed</h1>
+      <p class="lede">A push API for ambient cards. Producers push items onto channels; consumers subscribe and the delivery engine serves one card at a time. The interface below is just a thin client over the same REST API.</p>
+      <div class="cards">
+        <div class="stat"><div class="n" id="s_channels">—</div><div class="l">Channels</div></div>
+        <div class="stat"><div class="n" id="s_items">—</div><div class="l">Items</div></div>
+        <div class="stat"><div class="n" id="s_subs">—</div><div class="l">Subscriptions</div></div>
+        <div class="stat"><div class="n" id="s_hist">—</div><div class="l">Delivered</div></div>
       </div>
-      <div class="card mt">
-        <label>Publisher key <span class="muted">(needed to push / create channels)</span></label>
-        <div class="flex">
-          <input id="ov_key" class="keyline" readonly style="flex:1" />
-          <button class="btn ghost sm" id="copyKey">Copy</button>
-        </div>
-        <p class="muted" style="margin:9px 0 0;font-size:12px">Auto-filled locally. On a deployed bus, paste it in Settings.</p>
+      <h2>Quick start</h2>
+      <p class="muted" style="margin:-4px 0 14px;font-size:13.5px">Push your first item. Authenticate with your publisher key.</p>
+      <div class="codecard" id="qsCode">
+        <div class="codetabs" data-code="qs"></div>
+        <pre class="code"></pre>
       </div>
     </section>
 
     <!-- CHANNELS -->
     <section class="panel" data-panel="channels">
+      <div class="eyebrow">Resource</div>
       <h1>Channels</h1>
-      <p class="sub">The directory. Subscribe to what should reach your feed; mute without leaving.</p>
-      <div class="card" style="padding:0;overflow:hidden">
-        <table><thead><tr><th>Channel</th><th>Kind</th><th>Visibility</th><th>State</th><th class="right">Actions</th></tr></thead>
-        <tbody id="chRows"></tbody></table>
-      </div>
-      <div class="card mt">
-        <b>New channel</b>
-        <div class="row c3 mt">
-          <div><label>Slug / id</label><input id="nc_id" placeholder="my-channel" /></div>
-          <div><label>Title</label><input id="nc_title" placeholder="My Channel" /></div>
-          <div><label>Accent</label><input id="nc_accent" type="color" value="#7c6cff" style="height:38px;padding:3px" /></div>
+      <p class="lede">A channel is a named stream you push items onto. Consumers subscribe to the ones they want.</p>
+      <div class="ep"><span class="method get">GET</span><code>/v1/channels</code></div>
+      <div class="tbl"><table>
+        <thead><tr><th>Channel</th><th>Kind</th><th>Visibility</th><th>Subscription</th><th></th></tr></thead>
+        <tbody id="chRows"></tbody>
+      </table></div>
+
+      <h2>Create a channel</h2>
+      <div class="ep"><span class="method post">POST</span><code>/v1/channels</code></div>
+      <div class="split">
+        <div>
+          <div class="grid2">
+            <div class="field"><label>id <span class="opt">/ slug</span></label><input id="nc_id" placeholder="reading-list" /></div>
+            <div class="field"><label>title</label><input id="nc_title" placeholder="Reading List" /></div>
+          </div>
+          <div class="field"><label>description <span class="opt">optional</span></label><input id="nc_desc" placeholder="Saved articles to skim" /></div>
+          <div class="grid3">
+            <div class="field"><label>kind</label><select id="nc_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
+            <div class="field"><label>visibility</label><select id="nc_vis"><option>private</option><option>unlisted</option><option>public</option></select></div>
+            <div class="field"><label>accent</label><input id="nc_accent" type="color" value="#5b50e0" style="height:35px;padding:3px" /></div>
+          </div>
+          <h2 style="margin-top:24px">Parameters</h2>
+          <table class="params" id="chParams"></table>
         </div>
-        <div class="row c3 mt">
-          <div><label>Kind</label><select id="nc_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
-          <div><label>Visibility</label><select id="nc_vis"><option>private</option><option>unlisted</option><option>public</option></select></div>
-          <div style="display:flex;align-items:flex-end"><button class="btn" id="nc_create" style="width:100%">Create channel</button></div>
+        <div class="rail">
+          <div class="codecard">
+            <div class="codetabs" data-code="ch"></div>
+            <pre class="code"></pre>
+          </div>
+          <div class="resp"><div class="resp-head">Response <span class="pill" id="ch_status">—</span></div><pre class="resp-body" id="ch_resp">// Send the request to see the response</pre></div>
+          <button class="btn" id="ch_send">Send request</button>
         </div>
-        <div class="field mt"><label>Description</label><input id="nc_desc" placeholder="What this channel pushes" /></div>
       </div>
     </section>
 
-    <!-- PUSH -->
-    <section class="panel" data-panel="push">
-      <h1>Push an item</h1>
-      <p class="sub">This is the producer API — exactly what an integration would POST.</p>
-      <div class="row c2">
+    <!-- ITEMS -->
+    <section class="panel" data-panel="items">
+      <div class="eyebrow">Resource</div>
+      <h1>Create an item</h1>
+      <p class="lede">Push a card onto a channel, with delivery semantics. Re-pushing the same <code class="mono">dedupe_key</code> upserts instead of duplicating.</p>
+      <div class="ep"><span class="method post">POST</span><code>/v1/channels/{channel}/items</code></div>
+      <div class="split">
         <div>
-          <div class="card">
-            <div class="field"><label>Channel</label><select id="p_channel"></select></div>
-            <div class="field"><label>Title *</label><input id="p_title" placeholder="Standup in 10 min" /></div>
-            <div class="field"><label>Body</label><textarea id="p_body" placeholder="Daily · Google Meet"></textarea></div>
-            <div class="row c2">
-              <div class="field"><label>URL</label><input id="p_url" placeholder="https://…" /></div>
-              <div class="field"><label>Image URL</label><input id="p_img" placeholder="https://…" /></div>
-            </div>
-            <div class="row c2">
-              <div class="field"><label>Kind</label><select id="p_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
-              <div class="field"><label>Dedupe key</label><input id="p_dedupe" placeholder="optional — re-push upserts" /></div>
-            </div>
+          <div class="field"><label>channel</label><select id="p_channel"></select></div>
+          <div class="field"><label>title <span class="req">REQUIRED</span></label><input id="p_title" placeholder="Standup in 10 minutes" /></div>
+          <div class="field"><label>body <span class="opt">optional</span></label><textarea id="p_body" placeholder="Daily · Google Meet"></textarea></div>
+          <div class="grid2">
+            <div class="field"><label>url <span class="opt">optional</span></label><input id="p_url" placeholder="https://…" /></div>
+            <div class="field"><label>image_url <span class="opt">optional</span></label><input id="p_img" placeholder="https://…" /></div>
           </div>
+          <div class="grid2">
+            <div class="field"><label>kind</label><select id="p_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
+            <div class="field"><label>dedupe_key <span class="opt">optional</span></label><input id="p_dedupe" placeholder="cal:evt:abc" /></div>
+          </div>
+          <h2 style="margin-top:8px">delivery</h2>
+          <div class="grid2">
+            <div class="field"><label>class</label><select id="p_class"><option value="ambient">ambient</option><option value="must_see">must_see</option></select></div>
+            <div class="field"><label>priority <span class="mono" id="p_prioVal" style="color:var(--muted)">50</span></label><div class="range"><input id="p_prio" type="range" min="0" max="100" value="50" /></div></div>
+          </div>
+          <div class="field"><label>expires_at <span class="opt">optional</span></label><input id="p_expires" type="datetime-local" /></div>
+          <div class="grid3">
+            <div class="field"><label>repeat.mode</label><select id="p_repeat"><option value="once">once</option><option value="recurring">recurring</option></select></div>
+            <div class="field"><label>cooldown_s</label><input id="p_cooldown" type="number" value="86400" /></div>
+            <div class="field"><label>max <span class="opt">∞</span></label><input id="p_max" type="number" placeholder="∞" /></div>
+          </div>
+          <h2 style="margin-top:24px">Parameters</h2>
+          <table class="params" id="itParams"></table>
         </div>
-        <div>
-          <div class="card">
-            <b>Delivery</b>
-            <div class="row c2 mt">
-              <div class="field"><label>Class</label><select id="p_class"><option value="ambient">ambient (show once)</option><option value="must_see">must_see (until seen)</option></select></div>
-              <div class="field"><label>Priority <span id="p_prioVal" class="muted">50</span></label><input id="p_prio" type="range" min="0" max="100" value="50" /></div>
-            </div>
-            <div class="field"><label>Expires at</label><input id="p_expires" type="datetime-local" /></div>
-            <div class="row c3">
-              <div class="field"><label>Repeat</label><select id="p_repeat"><option value="once">once</option><option value="recurring">recurring</option></select></div>
-              <div class="field"><label>Cooldown (s)</label><input id="p_cooldown" type="number" value="86400" /></div>
-              <div class="field"><label>Max</label><input id="p_max" type="number" placeholder="∞" /></div>
-            </div>
+        <div class="rail">
+          <div class="codecard">
+            <div class="codetabs" data-code="it"></div>
+            <pre class="code"></pre>
           </div>
-          <div class="card mt" style="display:flex;justify-content:center;background:var(--bg)">
-            <div id="p_preview"></div>
-          </div>
+          <div class="resp"><div class="resp-head">Response <span class="pill" id="it_status">—</span></div><pre class="resp-body" id="it_resp">// Send the request to see the response</pre></div>
+          <button class="btn" id="it_send">Send request</button>
         </div>
       </div>
-      <div class="flex mt"><button class="btn" id="p_send">Push item</button><span id="p_result" class="muted"></span></div>
     </section>
 
     <!-- FEED -->
     <section class="panel" data-panel="feed">
-      <h1>Live feed</h1>
-      <p class="sub">Pull the next card the delivery engine picks for you — watch the semantics work.</p>
-      <div class="flex">
-        <button class="btn" id="f_next">Pull next</button>
-        <button class="btn ghost" id="f_play">▶ Auto-play</button>
-        <span id="f_meta" class="muted"></span>
-      </div>
-      <div class="row c2 mt">
-        <div class="card" style="display:flex;justify-content:center;background:var(--bg)"><div id="f_card"><span class="muted">nothing pulled yet</span></div></div>
-        <div><pre id="f_json">// raw item JSON appears here</pre>
-          <div class="flex mt"><button class="btn subtle sm" id="f_seen">Mark seen</button><button class="btn subtle sm" id="f_open">Open link</button></div>
+      <div class="eyebrow">Consumer</div>
+      <h1>Feed</h1>
+      <p class="lede">The delivery engine returns the single best card for the calling consumer, or <code class="mono">204</code> when nothing is eligible. Identity comes from the <code class="mono">X-Vibefeed-User</code> header.</p>
+      <div class="ep"><span class="method get">GET</span><code>/v1/feed/next</code></div>
+      <div class="split">
+        <div>
+          <table class="params" id="feedParams"></table>
+          <div style="margin-top:18px" class="keyrow">
+            <button class="btn" id="f_next">Send request</button>
+            <button class="btn ghost sm" id="f_seen">POST /feed/seen</button>
+          </div>
+        </div>
+        <div class="rail">
+          <div class="codecard">
+            <div class="codetabs" data-code="feed"></div>
+            <pre class="code"></pre>
+          </div>
+          <div class="resp"><div class="resp-head">Response <span class="pill" id="f_status">—</span></div><pre class="resp-body" id="f_resp">// Send the request to see the response</pre></div>
         </div>
       </div>
     </section>
 
-    <!-- HISTORY -->
-    <section class="panel" data-panel="history">
-      <h1>History</h1>
-      <p class="sub">Recently delivered & seen.</p>
-      <div class="card" style="padding:0;overflow:hidden">
-        <table><thead><tr><th>Channel</th><th>Title</th><th class="right">Seen</th></tr></thead><tbody id="histRows"></tbody></table>
+    <!-- API KEYS -->
+    <section class="panel" data-panel="keys">
+      <div class="eyebrow">Developers</div>
+      <h1>API keys</h1>
+      <p class="lede">Producer requests authenticate with a publisher key, scoped to the channels its owner controls. Send it as a bearer token.</p>
+      <div class="card">
+        <label>Publisher key</label>
+        <div class="keyrow"><input id="keyVal" readonly /><button class="btn ghost sm" id="copyKey">Copy</button></div>
+        <p class="note" id="keyNote"></p>
       </div>
+      <h2>Authentication</h2>
+      <div class="codecard"><div class="codetabs" data-code="auth"></div><pre class="code"></pre></div>
     </section>
 
     <!-- SETTINGS -->
     <section class="panel" data-panel="settings">
+      <div class="eyebrow">Developers</div>
       <h1>Settings</h1>
-      <p class="sub">Point the console at a bus and set the publisher key for pushes.</p>
-      <div class="card settings">
-        <div class="field"><label>Backend base URL</label><input id="set_base" placeholder="http://localhost:4000" /></div>
-        <div class="field"><label>Publisher key</label><input id="set_key" placeholder="vf_pk_…" /></div>
+      <p class="lede">Point the console at a bus and set the publisher key used for write requests.</p>
+      <div class="card">
+        <div class="field"><label>Base URL</label><input id="set_base" class="mono" placeholder="http://localhost:4000" /></div>
+        <div class="field"><label>Publisher key <span class="opt">stored locally in this browser</span></label><input id="set_key" class="mono" placeholder="vf_pk_…" /></div>
+        <div class="field"><label>Consumer identity <span class="opt">X-Vibefeed-User</span></label><input id="set_user" class="mono" readonly /></div>
         <button class="btn" id="set_save">Save</button>
       </div>
     </section>
