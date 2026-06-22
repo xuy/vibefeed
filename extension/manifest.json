@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "vibefeed",
+  "version": "0.1.0",
+  "description": "While the AI thinks, skim one useful thing — your calendar, unread mail, RSS, HN, or a random Wikipedia article.",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "vibefeed",
+    "default_icon": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" }
+  },
+  "icons": { "16": "icons/icon-16.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "background": { "service_worker": "src/background.js" },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "http://localhost:4000/*",
+    "https://vibefeed.fly.dev/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://www.perplexity.ai/*",
+    "https://perplexity.ai/*",
+    "https://gemini.google.com/*",
+    "https://chat.mistral.ai/*",
+    "https://copilot.microsoft.com/*",
+    "https://chat.deepseek.com/*",
+    "https://grok.com/*"
+  ],
+  "content_scripts": [
+    {
+      "js": ["src/config.js", "src/content.js"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://www.perplexity.ai/*",
+        "https://perplexity.ai/*",
+        "https://gemini.google.com/*",
+        "https://chat.mistral.ai/*",
+        "https://copilot.microsoft.com/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

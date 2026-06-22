@@ -1,0 +1,32 @@
+# Fly.io config for the vibefeed backend.
+#   fly launch --no-deploy   (first time, to create the app / pick a name)
+#   fly deploy
+# Optional: protect the public endpoint with a token:
+#   fly secrets set FEED_TOKEN=$(openssl rand -hex 16)
+app = "vibefeed"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  # Persist feed state on the mounted volume (survives restarts/deploys).
+  FEED_STATE = "/data/.vibefeed-state.json"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+# A tiny volume just for the JSON state file. Create with:
+#   fly volumes create vibefeed_data --size 1 --region iad
+[[mounts]]
+  source = "vibefeed_data"
+  destination = "/data"

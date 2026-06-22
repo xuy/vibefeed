@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>vibefeed — demo</title>
+  <style>
+    body { margin:0; font-family:'DM Sans',system-ui,-apple-system,sans-serif;
+      background:#ececf1; color:#17162e; min-height:100vh; }
+    /* faux AI chat backdrop so the floating card reads in context */
+    .chat { max-width:760px; margin:0 auto; padding:40px 24px 120px; }
+    .bubble { border-radius:14px; padding:14px 16px; margin:14px 0; font-size:14px; line-height:1.5; }
+    .me { background:#e7e3ff; margin-left:80px; }
+    .ai { background:#fff; border:1px solid rgba(23,22,46,.08); }
+    .ai .typing { display:inline-block; color:#7c6cff; font-weight:600; }
+    h3 { text-align:center; color:rgba(23,22,46,.5); font-weight:600; font-size:13px; letter-spacing:.04em; text-transform:uppercase; }
+    .gallery { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; padding:8px 0 28px; }
+    #floating { position:fixed; right:18px; bottom:18px; }
+    .reload { position:fixed; left:18px; bottom:18px; font-size:12px; padding:8px 12px; border:none; border-radius:9px;
+      background:#7c6cff; color:#fff; font-weight:600; cursor:pointer; font-family:inherit; }
+  </style>
+</head>
+<body>
+  <div class="chat">
+    <h3>vibefeed card — live preview from your backend</h3>
+    <div class="gallery" id="gallery"></div>
+    <div class="bubble me">Explain the Riemann hypothesis like I'm twelve.</div>
+    <div class="bubble ai">Sure! <span class="typing">▍ generating…</span></div>
+  </div>
+  <div id="floating"></div>
+  <button class="reload" onclick="load()">↻ pull fresh cards</button>
+
+  <script>
+    const BASE = new URLSearchParams(location.search).get("base") || "http://localhost:4000";
+    const ACCENT = { calendar:"#7c6cff", email:"#7c6cff", note:"#7c6cff", article:"#3a86ff", discussion:"#ff8c42" };
+    function timeAgo(ts){ if(!ts) return ""; const s=Math.max(0,(Date.now()-new Date(ts))/1000);
+      if(s<90) return "just now"; const m=s/60; if(m<60) return Math.round(m)+"m ago";
+      const h=m/60; if(h<24) return Math.round(h)+"h ago"; return Math.round(h/24)+"d ago"; }
+    function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
+
+    function card(item){
+      const a = ACCENT[item.kind] || "#3a86ff";
+      const img = item.imageUrl ? `<img src="${esc(item.imageUrl)}" referrerpolicy="no-referrer"
+        style="width:100%;height:128px;object-fit:cover;display:block" onerror="this.remove()"/>` : "";
+      return `<div style="width:330px;border-radius:16px;background:rgba(255,255,255,0.96);
+        backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(23,22,46,0.10);
+        box-shadow:0 18px 48px rgba(40,35,90,0.22);overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;font-size:11.5px;border-bottom:1px solid rgba(23,22,46,0.07)">
+          <span style="display:flex;align-items:center;gap:6px;font-weight:600;color:rgba(23,22,46,0.62)">
+            <span style="width:7px;height:7px;border-radius:50%;background:${a};display:inline-block"></span>${esc(item.sourceLabel||item.source)}
+          </span>
+          <span style="color:rgba(23,22,46,0.4);font-size:18px">×</span>
+        </div>
+        ${img}
+        <div style="display:block;padding:13px 14px 11px">
+          <div style="font-weight:600;font-size:15px;line-height:1.32;margin-bottom:5px">${esc(item.title)}</div>
+          ${item.body?`<div style="font-size:13px;line-height:1.45;color:rgba(23,22,46,0.62)">${esc(item.body)}</div>`:""}
+        </div>
+        <div style="padding:6px 14px 11px;display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:rgba(23,22,46,0.42)">
+          <span>${esc([item.author, timeAgo(item.ts)].filter(Boolean).join(" · "))}</span>
+          <span style="font-weight:600;letter-spacing:.02em">vibefeed</span>
+        </div>
+      </div>`;
+    }
+
+    async function next(){ const r = await fetch(BASE+"/feed/next"); if(r.status===204) return null; return r.json(); }
+    async function load(){
+      const items = [];
+      for (let i=0;i<3;i++){ try{ const it = await next(); if(it) items.push(it); }catch(e){} }
+      document.getElementById("gallery").innerHTML = items.map(card).join("");
+      document.getElementById("floating").innerHTML = items[0] ? card(items[0]) : "";
+    }
+    load();
+  </script>
+</body>
+</html>

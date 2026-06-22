@@ -1,0 +1,17 @@
+{
+  "name": "vibefeed-server",
+  "version": "0.1.0",
+  "description": "vibefeed backend — queues ambient content (Wikipedia, HN, RSS, Reddit, personal mocks) to deliver while you wait for an AI to answer.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
