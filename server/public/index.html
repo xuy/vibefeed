@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>vibefeed · admin</title>
+<style>
+  :root{
+    --ink:#17162e; --muted:#6b6982; --line:#e7e6f0; --bg:#f6f5fb; --card:#fff;
+    --accent:#7c6cff; --accent2:#3a86ff; --orange:#ff8c42; --green:#34c77b; --red:#ec5b5b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+  a{color:var(--accent);text-decoration:none}
+  .app{display:grid;grid-template-columns:228px 1fr;min-height:100vh}
+  /* sidebar */
+  aside{background:#fff;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:6px}
+  .brand{display:flex;align-items:center;gap:9px;padding:4px 8px 16px}
+  .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#7c6cff,#3a86ff)}
+  .brand b{font-size:17px}
+  nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:none;
+    font:inherit;color:var(--muted);padding:9px 11px;border-radius:9px;cursor:pointer;font-weight:600}
+  nav button:hover{background:#f3f1fb;color:var(--ink)}
+  nav button.on{background:#efeaff;color:var(--accent)}
+  .side-foot{margin-top:auto;font-size:11.5px;color:var(--muted);padding:8px}
+  .status{display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#cfced9}
+  .dot.ok{background:var(--green)} .dot.bad{background:var(--red)}
+  /* main */
+  main{padding:26px 30px;max-width:1000px}
+  h1{font-size:21px;margin:0 0 3px}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .grid{display:grid;gap:14px}
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px}
+  .stat .n{font-size:26px;font-weight:700} .stat .l{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .panel{display:none} .panel.on{display:block}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#f0eefa;color:var(--muted)}
+  .chip.pub{background:#e6f0ff;color:#2b6fd6} .chip.priv{background:#efeaff;color:var(--accent)} .chip.unl{background:#fff2e6;color:#c8702a}
+  label{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin:0 0 5px}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{resize:vertical;min-height:64px}
+  .row{display:grid;gap:12px} .row.c2{grid-template-columns:1fr 1fr} .row.c3{grid-template-columns:1fr 1fr 1fr}
+  .field{margin-bottom:13px}
+  button.btn{font:inherit;font-weight:600;border:none;border-radius:9px;cursor:pointer;padding:9px 15px;background:var(--accent);color:#fff}
+  button.btn:hover{filter:brightness(1.06)} button.btn.ghost{background:#efeaff;color:var(--accent)} button.btn.sm{padding:6px 10px;font-size:12.5px}
+  button.btn.subtle{background:#f0eefa;color:var(--muted)}
+  .muted{color:var(--muted)} .right{text-align:right} .mt{margin-top:16px} .flex{display:flex;gap:10px;align-items:center}
+  .toast{position:fixed;right:20px;bottom:20px;background:#17162e;color:#fff;padding:11px 15px;border-radius:10px;font-size:13px;opacity:0;transform:translateY(8px);transition:.25s;z-index:9}
+  .toast.show{opacity:1;transform:none}
+  /* card preview */
+  .pcard{width:320px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:0 14px 40px rgba(40,35,90,.14);overflow:hidden}
+  .pcard .pbar{display:flex;justify-content:space-between;align-items:center;padding:9px 13px;font-size:11.5px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line)}
+  .pcard .pdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
+  .pcard img{width:100%;height:120px;object-fit:cover;display:block}
+  .pcard .pb{padding:13px 14px}
+  .pcard .pt{font-weight:600;font-size:15px;line-height:1.3}
+  .pcard .pd{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .pcard .pf{padding:6px 14px 11px;display:flex;justify-content:space-between;font-size:10.5px;color:#9b99ad}
+  pre{background:#0f0e1c;color:#d6d4ec;padding:13px;border-radius:10px;overflow:auto;font-size:12px;line-height:1.5}
+  .keyline{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  .settings input{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo"></div><b>vibefeed</b></div>
+    <nav id="nav">
+      <button data-tab="overview" class="on">▦ Overview</button>
+      <button data-tab="channels">◎ Channels</button>
+      <button data-tab="push">↑ Push</button>
+      <button data-tab="feed">▶ Live feed</button>
+      <button data-tab="history">⟲ History</button>
+      <button data-tab="settings">⚙ Settings</button>
+    </nav>
+    <div class="side-foot">
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
+      <div id="baseLabel" class="muted" style="margin-top:4px;word-break:break-all"></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section class="panel on" data-panel="overview">
+      <h1>Overview</h1>
+      <p class="sub">Your local vibefeed bus. Push items onto channels, subscribe, watch delivery.</p>
+      <div class="grid stats">
+        <div class="card stat"><div class="n" id="s_channels">–</div><div class="l">Channels</div></div>
+        <div class="card stat"><div class="n" id="s_items">–</div><div class="l">Items</div></div>
+        <div class="card stat"><div class="n" id="s_subs">–</div><div class="l">Subscriptions</div></div>
+        <div class="card stat"><div class="n" id="s_hist">–</div><div class="l">Delivered</div></div>
+      </div>
+      <div class="card mt">
+        <label>Publisher key <span class="muted">(needed to push / create channels)</span></label>
+        <div class="flex">
+          <input id="ov_key" class="keyline" readonly style="flex:1" />
+          <button class="btn ghost sm" id="copyKey">Copy</button>
+        </div>
+        <p class="muted" style="margin:9px 0 0;font-size:12px">Auto-filled locally. On a deployed bus, paste it in Settings.</p>
+      </div>
+    </section>
+
+    <!-- CHANNELS -->
+    <section class="panel" data-panel="channels">
+      <h1>Channels</h1>
+      <p class="sub">The directory. Subscribe to what should reach your feed; mute without leaving.</p>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table><thead><tr><th>Channel</th><th>Kind</th><th>Visibility</th><th>State</th><th class="right">Actions</th></tr></thead>
+        <tbody id="chRows"></tbody></table>
+      </div>
+      <div class="card mt">
+        <b>New channel</b>
+        <div class="row c3 mt">
+          <div><label>Slug / id</label><input id="nc_id" placeholder="my-channel" /></div>
+          <div><label>Title</label><input id="nc_title" placeholder="My Channel" /></div>
+          <div><label>Accent</label><input id="nc_accent" type="color" value="#7c6cff" style="height:38px;padding:3px" /></div>
+        </div>
+        <div class="row c3 mt">
+          <div><label>Kind</label><select id="nc_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
+          <div><label>Visibility</label><select id="nc_vis"><option>private</option><option>unlisted</option><option>public</option></select></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn" id="nc_create" style="width:100%">Create channel</button></div>
+        </div>
+        <div class="field mt"><label>Description</label><input id="nc_desc" placeholder="What this channel pushes" /></div>
+      </div>
+    </section>
+
+    <!-- PUSH -->
+    <section class="panel" data-panel="push">
+      <h1>Push an item</h1>
+      <p class="sub">This is the producer API — exactly what an integration would POST.</p>
+      <div class="row c2">
+        <div>
+          <div class="card">
+            <div class="field"><label>Channel</label><select id="p_channel"></select></div>
+            <div class="field"><label>Title *</label><input id="p_title" placeholder="Standup in 10 min" /></div>
+            <div class="field"><label>Body</label><textarea id="p_body" placeholder="Daily · Google Meet"></textarea></div>
+            <div class="row c2">
+              <div class="field"><label>URL</label><input id="p_url" placeholder="https://…" /></div>
+              <div class="field"><label>Image URL</label><input id="p_img" placeholder="https://…" /></div>
+            </div>
+            <div class="row c2">
+              <div class="field"><label>Kind</label><select id="p_kind"><option>note</option><option>article</option><option>discussion</option><option>calendar</option><option>email</option><option>event</option></select></div>
+              <div class="field"><label>Dedupe key</label><input id="p_dedupe" placeholder="optional — re-push upserts" /></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <b>Delivery</b>
+            <div class="row c2 mt">
+              <div class="field"><label>Class</label><select id="p_class"><option value="ambient">ambient (show once)</option><option value="must_see">must_see (until seen)</option></select></div>
+              <div class="field"><label>Priority <span id="p_prioVal" class="muted">50</span></label><input id="p_prio" type="range" min="0" max="100" value="50" /></div>
+            </div>
+            <div class="field"><label>Expires at</label><input id="p_expires" type="datetime-local" /></div>
+            <div class="row c3">
+              <div class="field"><label>Repeat</label><select id="p_repeat"><option value="once">once</option><option value="recurring">recurring</option></select></div>
+              <div class="field"><label>Cooldown (s)</label><input id="p_cooldown" type="number" value="86400" /></div>
+              <div class="field"><label>Max</label><input id="p_max" type="number" placeholder="∞" /></div>
+            </div>
+          </div>
+          <div class="card mt" style="display:flex;justify-content:center;background:var(--bg)">
+            <div id="p_preview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex mt"><button class="btn" id="p_send">Push item</button><span id="p_result" class="muted"></span></div>
+    </section>
+
+    <!-- FEED -->
+    <section class="panel" data-panel="feed">
+      <h1>Live feed</h1>
+      <p class="sub">Pull the next card the delivery engine picks for you — watch the semantics work.</p>
+      <div class="flex">
+        <button class="btn" id="f_next">Pull next</button>
+        <button class="btn ghost" id="f_play">▶ Auto-play</button>
+        <span id="f_meta" class="muted"></span>
+      </div>
+      <div class="row c2 mt">
+        <div class="card" style="display:flex;justify-content:center;background:var(--bg)"><div id="f_card"><span class="muted">nothing pulled yet</span></div></div>
+        <div><pre id="f_json">// raw item JSON appears here</pre>
+          <div class="flex mt"><button class="btn subtle sm" id="f_seen">Mark seen</button><button class="btn subtle sm" id="f_open">Open link</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="panel" data-panel="history">
+      <h1>History</h1>
+      <p class="sub">Recently delivered & seen.</p>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table><thead><tr><th>Channel</th><th>Title</th><th class="right">Seen</th></tr></thead><tbody id="histRows"></tbody></table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="panel" data-panel="settings">
+      <h1>Settings</h1>
+      <p class="sub">Point the console at a bus and set the publisher key for pushes.</p>
+      <div class="card settings">
+        <div class="field"><label>Backend base URL</label><input id="set_base" placeholder="http://localhost:4000" /></div>
+        <div class="field"><label>Publisher key</label><input id="set_key" placeholder="vf_pk_…" /></div>
+        <button class="btn" id="set_save">Save</button>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

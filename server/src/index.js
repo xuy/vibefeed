@@ -3,14 +3,21 @@
 //   • Consumer (a user identity; open by default for local self-host): pull the feed, manage
 //     subscriptions, browse the channel directory.
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import * as bus from "./bus.js";
 import { bootstrap, LOCAL_USER } from "./bootstrap.js";
 import { startPushers } from "../clients/runner.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: "256kb" }));
 
 const PORT = process.env.PORT || 4000;
+let DEFAULT_KEY = null; // the boot publisher key, revealed only to loopback callers
+
+// Admin web console (static). Served at / — drives the same /v1 API you'd use programmatically.
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.use((req, res, next) => {
   res.set("Access-Control-Allow-Origin", "*");
@@ -42,6 +49,16 @@ function wrap(fn) {
 
 // ---- health + client display config --------------------------------------
 app.get("/health", (req, res) => res.json({ ok: true, ...bus.stats(user(req)) }));
+
+// Loopback-only convenience: hands the local admin console the default publisher key so you
+// don't have to copy it from the logs. Returns 403 to any non-loopback caller (e.g. on Fly),
+// so the key never leaks publicly — there you paste it into the console by hand.
+app.get("/v1/admin/hello", (req, res) => {
+  const ip = req.socket.remoteAddress || "";
+  const loopback = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(ip);
+  if (!loopback) return res.status(403).json({ error: "loopback only" });
+  res.json({ base: `http://localhost:${PORT}`, key: DEFAULT_KEY });
+});
 app.get("/v1/feed/config", (_req, res) => res.json(bus.CONFIG));
 
 // ---- consumer: feed ------------------------------------------------------
@@ -80,6 +97,7 @@ app.post("/v1/keys", publisher, wrap((req) => ({ key: bus.mintKey(req.ownerId, (
 // ---- boot ----------------------------------------------------------------
 bus.init();
 const { key } = bootstrap();
+DEFAULT_KEY = key;
 app.listen(PORT, () => {
   console.log(`[vibefeed] bus on http://localhost:${PORT}`);
   console.log(`[vibefeed] default publisher key: ${key}${process.env.VIBEFEED_KEY ? "" : "  (ephemeral — set VIBEFEED_KEY to persist)"}`);
