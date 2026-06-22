@@ -2,16 +2,22 @@
 const $ = (id) => document.getElementById(id);
 const ACCENT = { calendar: "#7c6cff", email: "#7c6cff", note: "#7c6cff", article: "#3a86ff", discussion: "#ff8c42", event: "#7c6cff" };
 
+function makeUser() {
+  let u = localStorage.getItem("vf_user");
+  if (!u) { u = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "u-" + Date.now() + "-" + Math.random().toString(36).slice(2); localStorage.setItem("vf_user", u); }
+  return u;
+}
 const cfg = {
   base: localStorage.getItem("vf_base") || location.origin || "http://localhost:4000",
   key: localStorage.getItem("vf_key") || "",
+  user: makeUser(), // this browser's consumer identity → its own feed/subscriptions
 };
 
 function url(p) { return cfg.base.replace(/\/$/, "") + p; }
-function pubHeaders() { const h = { "Content-Type": "application/json" }; if (cfg.key) h.Authorization = "Bearer " + cfg.key; return h; }
-async function get(p) { const r = await fetch(url(p)); if (r.status === 204) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+function pubHeaders() { const h = { "Content-Type": "application/json", "X-Vibefeed-User": cfg.user }; if (cfg.key) h.Authorization = "Bearer " + cfg.key; return h; }
+async function get(p) { const r = await fetch(url(p), { headers: { "X-Vibefeed-User": cfg.user } }); if (r.status === 204) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
 async function post(p, body, auth) {
-  const r = await fetch(url(p), { method: "POST", headers: auth ? pubHeaders() : { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const r = await fetch(url(p), { method: "POST", headers: auth ? pubHeaders() : { "Content-Type": "application/json", "X-Vibefeed-User": cfg.user }, body: JSON.stringify(body || {}) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error || "HTTP " + r.status);
   return d;

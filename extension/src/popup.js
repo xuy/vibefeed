@@ -5,12 +5,17 @@ const $ = (id) => document.getElementById(id);
 
 const ACCENT = { calendar: "#7c6cff", email: "#7c6cff", note: "#7c6cff", article: "#3a86ff", discussion: "#ff8c42" };
 
-let state = { base: DEFAULT_BASE, token: null };
+let state = { base: DEFAULT_BASE, token: null, user: null };
 
 async function loadSettings() {
-  const s = await api.storage.local.get(["vf_api_base", "vf_token"]);
+  const s = await api.storage.local.get(["vf_api_base", "vf_token", "vf_user"]);
   state.base = s.vf_api_base || DEFAULT_BASE;
   state.token = s.vf_token || null;
+  state.user = s.vf_user || null;
+  if (!state.user) {
+    state.user = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "u-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    await api.storage.local.set({ vf_user: state.user });
+  }
   $("apiBase").value = state.base;
   $("token").value = state.token || "";
 }
@@ -19,6 +24,7 @@ function url(path) { return state.base.replace(/\/$/, "") + path; }
 function headers() {
   const h = { "Content-Type": "application/json" };
   if (state.token) h.Authorization = "Bearer " + state.token;
+  if (state.user) h["X-Vibefeed-User"] = state.user;
   return h;
 }
 async function get(path) {

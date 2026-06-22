@@ -27,9 +27,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Consumer identity. Local-first: defaults to the single "local" user. A hosted deployment
-// would resolve a real user from a session/token here instead.
-function user(req) { return req.get("X-Vibefeed-User") || req.query.user || LOCAL_USER; }
+// Consumer identity. Clients send a stable random id via X-Vibefeed-User so each browser gets
+// its own subscriptions/feed/history on the shared bus (no login). Falls back to "local" for
+// bare API calls. ensureUser seeds a brand-new id with the public channels on first contact.
+function user(req) {
+  const u = req.get("X-Vibefeed-User") || req.query.user || LOCAL_USER;
+  bus.ensureUser(u);
+  return u;
+}
 
 // Producer auth: a valid publisher key resolves to its owner; routes check channel ownership.
 function publisher(req, res, next) {

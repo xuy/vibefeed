@@ -120,9 +120,29 @@ function normalizeRepeat(r) {
   return { mode: "recurring", cooldownS: Math.max(0, num(r.cooldown_s ?? r.cooldownS, 86400)), max: r.max != null ? Math.max(1, num(r.max, 1)) : null };
 }
 
+// --- users -----------------------------------------------------------------
+// First time we see a consumer id, give them their own subscription set seeded with the PUBLIC
+// channels so their feed isn't empty. Private channels are never auto-added. Idempotent: once a
+// user has a subscription record (even after unsubscribing from everything), we leave it alone.
+export function ensureUser(userId) {
+  if (db.subs[userId]) return;
+  db.subs[userId] = {};
+  for (const c of Object.values(db.channels)) {
+    if (c.visibility === "public") db.subs[userId][c.id] = { muted: false, createdAt: new Date().toISOString() };
+  }
+  save();
+}
+
 // --- subscriptions ---------------------------------------------------------
-export function subscribe(userId, channelId) {
-  if (!db.channels[channelId]) throw httpErr(404, "no such channel");
+export function subscribe(userId, channelId, opts = {}) {
+  const ch = db.channels[channelId];
+  if (!ch) throw httpErr(404, "no such channel");
+  // You may subscribe to public/unlisted channels, or private ones you own. `force` is for
+  // internal seeding (bootstrap) only — the HTTP route never sets it, so a stranger can't join
+  // someone else's private channel.
+  if (!opts.force && ch.visibility === "private" && ch.ownerId !== userId) {
+    throw httpErr(403, "cannot subscribe to a private channel");
+  }
   const subs = getSubs(userId);
   if (!subs[channelId]) subs[channelId] = { muted: false, createdAt: new Date().toISOString() };
   save();

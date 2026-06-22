@@ -17,6 +17,7 @@
   let CFG = { ...DEFAULT_CFG };
   let API_BASE = DEFAULT_BASE;
   let TOKEN = null;
+  let USER = null; // stable per-browser id → your own feed/subscriptions on a shared bus
 
   const STOP_SELECTORS = [
     "[data-testid='stop-button']", "[data-testid*='stop']", "[aria-label*='Stop']",
@@ -45,9 +46,14 @@
   // ---- settings + runtime config -------------------------------------------
   async function loadSettings() {
     try {
-      const s = await api.storage.local.get(["vf_api_base", "vf_token", "vf_cfg"]);
+      const s = await api.storage.local.get(["vf_api_base", "vf_token", "vf_cfg", "vf_user"]);
       if (s.vf_api_base) API_BASE = s.vf_api_base;
       if (s.vf_token) TOKEN = s.vf_token;
+      USER = s.vf_user || null;
+      if (!USER) {
+        USER = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "u-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+        try { await api.storage.local.set({ vf_user: USER }); } catch (_) {}
+      }
       if (s.vf_cfg && s.vf_cfg.at && Date.now() - s.vf_cfg.at < 3600_000 && s.vf_cfg.cfg) {
         CFG = { ...DEFAULT_CFG, ...s.vf_cfg.cfg };
         return;
@@ -66,6 +72,7 @@
   function proxy(path, options = {}) {
     const headers = { ...(options.headers || {}) };
     if (TOKEN) headers.Authorization = "Bearer " + TOKEN;
+    if (USER) headers["X-Vibefeed-User"] = USER;
     return api.runtime.sendMessage({ type: "vf_api", url: API_BASE + path, options: { ...options, headers } });
   }
 
