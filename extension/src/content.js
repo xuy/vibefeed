@@ -12,7 +12,7 @@
   const DEBUG = typeof VF_DEBUG !== "undefined" && VF_DEBUG;
   const dbg = (...a) => { if (DEBUG) try { console.log("[vibefeed]", ...a); } catch (_) {} };
 
-  // Delivery feel — overridable by the backend's /feed/config (cached 1h) and by popup settings.
+  // Delivery feel — overridable by the backend's /v1/feed/config (cached 1h) and by popup settings.
   const DEFAULT_CFG = { cooldownMs: 20000, minVisibleMs: 1500, displayMs: 11000, maxPerSession: 0 };
   let CFG = { ...DEFAULT_CFG };
   let API_BASE = DEFAULT_BASE;
@@ -54,7 +54,7 @@
       }
     } catch (_) {}
     try {
-      const res = await proxy("/feed/config", { method: "GET" });
+      const res = await proxy("/v1/feed/config", { method: "GET" });
       if (res && res.ok && res.body) {
         CFG = { ...DEFAULT_CFG, ...res.body };
         try { await api.storage.local.set({ vf_cfg: { at: Date.now(), cfg: res.body } }); } catch (_) {}
@@ -85,7 +85,7 @@
   }
 
   function renderCard(item) {
-    const accent = KIND_ACCENT[item.kind] || "#3a86ff";
+    const accent = item.accent || KIND_ACCENT[item.kind] || "#3a86ff";
     const host = document.createElement("div");
     host.style.cssText = "position:fixed;right:18px;bottom:18px;z-index:2147483647;";
     const root = host.attachShadow({ mode: "closed" });
@@ -174,7 +174,7 @@
     if (!force && CFG.maxPerSession > 0 && shownThisSession >= CFG.maxPerSession) { dbg("skip: session cap"); return; }
     showing = true;
     try {
-      const res = await proxy("/feed/next", { method: "GET" });
+      const res = await proxy("/v1/feed/next", { method: "GET" });
       if (!res || !res.ok) { dbg("no item", res && res.status); showing = false; return; }
       if (res.status === 204 || !res.body) { dbg("queue empty (204)"); showing = false; return; }
       const item = res.body;
@@ -186,10 +186,10 @@
       const reportSeen = () => {
         if (document.hidden) return;
         document.removeEventListener("visibilitychange", onVis);
-        proxy("/feed/seen", {
+        proxy("/v1/feed/seen", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...item, visibleMs: Date.now() - shownAt }),
+          body: JSON.stringify({ id: item.id }),
         }).then(() => dbg("seen:", item.title)).catch(() => {});
       };
       const onVis = () => { if (!document.hidden) reportSeen(); };

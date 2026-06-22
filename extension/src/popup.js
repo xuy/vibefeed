@@ -46,36 +46,45 @@ async function refreshStatus() {
   try {
     const h = await get("/health");
     $("pill").className = "pill ok";
-    $("statusText").textContent = `connected · ${h.queue} queued`;
+    $("statusText").textContent = `connected · ${h.items} items · ${h.subscriptions} subs`;
   } catch (_) {
     $("pill").className = "pill bad";
     $("statusText").textContent = "offline";
   }
 }
 
-async function loadSources() {
-  const box = $("sources");
+async function loadChannels() {
+  const box = $("channels");
   try {
-    const d = await get("/feed/sources");
+    const d = await get("/v1/channels");
     box.textContent = "";
-    for (const s of d.sources) {
+    if (!d.channels.length) { box.innerHTML = '<div class="muted">no channels yet</div>'; return; }
+    for (const c of d.channels) {
       const row = document.createElement("div");
       row.className = "src";
       const lbl = document.createElement("div");
       lbl.className = "lbl";
-      lbl.innerHTML = `${s.label} <span class="kind">${s.kind}${s.needsConfig ? " · configurable" : ""}</span>`;
+      const meta = [c.kind, c.visibility, c.owned ? "owned" : ""].filter(Boolean).join(" · ");
+      lbl.innerHTML = `${escape_(c.title)} <span class="kind">${escape_(meta)}</span>` +
+        (c.subscribed ? ` <a href="#" class="mutelink" style="font-size:10.5px;color:${c.muted ? "#ec5b5b" : "var(--accent)"}">${c.muted ? "muted" : "mute"}</a>` : "");
       const sw = document.createElement("label");
       sw.className = "switch";
       const cb = document.createElement("input");
-      cb.type = "checkbox"; cb.checked = s.enabled;
+      cb.type = "checkbox"; cb.checked = c.subscribed;
       const sl = document.createElement("span");
       sl.className = "slider";
       cb.addEventListener("change", async () => {
-        try { await post("/feed/sources", { [s.id]: cb.checked }); refreshStatus(); }
+        try { await post("/v1/subscriptions", { channelId: c.id, action: cb.checked ? "subscribe" : "unsubscribe" }); loadChannels(); refreshStatus(); }
         catch (_) { cb.checked = !cb.checked; }
       });
       sw.appendChild(cb); sw.appendChild(sl);
       row.appendChild(lbl); row.appendChild(sw);
+      const mlink = lbl.querySelector(".mutelink");
+      if (mlink) mlink.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try { await post("/v1/subscriptions", { channelId: c.id, action: c.muted ? "unmute" : "mute" }); loadChannels(); }
+        catch (_) {}
+      });
       box.appendChild(row);
     }
   } catch (_) {
@@ -86,8 +95,8 @@ async function loadSources() {
 function renderPreview(item) {
   const box = $("preview");
   box.style.display = "block";
-  if (!item) { box.innerHTML = '<div class="muted">queue is empty — try a refill</div>'; return; }
-  const accent = ACCENT[item.kind] || "#3a86ff";
+  if (!item) { box.innerHTML = '<div class="muted">nothing right now — subscribe to a channel</div>'; return; }
+  const accent = item.accent || ACCENT[item.kind] || "#3a86ff";
   const img = item.imageUrl ? `<img src="${item.imageUrl}" referrerpolicy="no-referrer" onerror="this.remove()"/>` : "";
   box.innerHTML = `
     <div class="pcard">
@@ -104,7 +113,7 @@ function escape_(s) { const d = document.createElement("div"); d.textContent = s
 async function loadHistory() {
   const box = $("history");
   try {
-    const d = await get("/feed/history?limit=20");
+    const d = await get("/v1/feed/history?limit=20");
     if (!d.items.length) { box.innerHTML = '<div class="muted">nothing yet</div>'; return; }
     box.textContent = "";
     for (const it of d.items) {
@@ -123,7 +132,7 @@ $("saveBase").addEventListener("click", async () => {
   state.base = $("apiBase").value.trim() || DEFAULT_BASE;
   await api.storage.local.set({ vf_api_base: state.base });
   await api.storage.local.remove("vf_cfg"); // drop cached config so the new backend's config is fetched
-  refreshStatus(); loadSources(); loadHistory();
+  refreshStatus(); loadChannels(); loadHistory();
 });
 $("saveToken").addEventListener("click", async () => {
   state.token = $("token").value.trim() || null;
@@ -133,7 +142,7 @@ $("saveToken").addEventListener("click", async () => {
 });
 
 $("previewBtn").addEventListener("click", async () => {
-  try { renderPreview(await get("/feed/next")); loadHistory(); }
+  try { renderPreview(await get("/v1/feed/next")); loadHistory(); }
   catch (_) { renderPreview(null); }
 });
 
@@ -155,6 +164,6 @@ $("showBtn").addEventListener("click", async () => {
 (async function init() {
   await loadSettings();
   refreshStatus();
-  loadSources();
+  loadChannels();
   loadHistory();
 })();

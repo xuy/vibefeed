@@ -38,7 +38,7 @@
     function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
 
     function card(item){
-      const a = ACCENT[item.kind] || "#3a86ff";
+      const a = item.accent || ACCENT[item.kind] || "#3a86ff";
       const img = item.imageUrl ? `<img src="${esc(item.imageUrl)}" referrerpolicy="no-referrer"
         style="width:100%;height:128px;object-fit:cover;display:block" onerror="this.remove()"/>` : "";
       return `<div style="width:330px;border-radius:16px;background:rgba(255,255,255,0.96);
@@ -62,7 +62,7 @@
       </div>`;
     }
 
-    async function next(){ const r = await fetch(BASE+"/feed/next"); if(r.status===204) return null; return r.json(); }
+    async function next(){ const r = await fetch(BASE+"/v1/feed/next"); if(r.status===204) return null; return r.json(); }
     async function load(){
       const items = [];
       for (let i=0;i<3;i++){ try{ const it = await next(); if(it) items.push(it); }catch(e){} }

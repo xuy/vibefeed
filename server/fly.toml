@@ -11,8 +11,10 @@ primary_region = "iad"
 
 [env]
   PORT = "8080"
-  # Persist feed state on the mounted volume (survives restarts/deploys).
-  FEED_STATE = "/data/.vibefeed-state.json"
+  # Persist bus state on the mounted volume (survives restarts/deploys).
+  VIBEFEED_STATE = "/data/.vibefeed-state.json"
+  # Set a stable publisher key via secrets so pushers survive restarts:
+  #   fly secrets set VIBEFEED_KEY=$(openssl rand -hex 18)
 
 [http_service]
   internal_port = 8080
