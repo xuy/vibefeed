@@ -127,7 +127,8 @@ app.get("/v1/channels/:id", wrap((req) => {
   // oracle that would let them enumerate private lane ids), then gate on visibility.
   if (AUTH_MODE === "hosted") {
     const u = user(req); // 401s without a valid read token
-    if (!bus.channelVisibleTo(u, req.params.id)) notFound();
+    const auth = bus.resolveToken(bearer(req)); // owner may differ from consumer userId
+    if (!bus.channelVisibleTo(u, req.params.id, auth && auth.ownerId)) notFound();
   }
   // Self-host ("none") is a single trust domain — keep today's behavior (metadata by id).
   const c = bus.getChannel(req.params.id);

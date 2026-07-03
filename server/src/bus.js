@@ -123,14 +123,15 @@ export function createChannel(spec, ownerId) {
 
 export function getChannel(id) { return db.channels[id] || null; }
 
-// Is this channel visible to this user? Public channels are visible to everyone; private/
-// unlisted ones only to their owner or a subscriber. Used to gate single-channel lookups so a
-// hosted caller can't read private lane metadata by guessing its id.
-export function channelVisibleTo(userId, id) {
+// Is this channel visible to this requester? Public channels are visible to everyone; private/
+// unlisted ones only to the owner or a subscriber. `ownerId` is the requesting token's owner —
+// passed separately because a token's (userId, ownerId) can legitimately differ (spec §3 rule 1),
+// and the owner must see their own lane even when its consumer userId isn't subscribed.
+export function channelVisibleTo(userId, id, ownerId = null) {
   const c = db.channels[id];
   if (!c) return false;
   if (c.visibility === "public") return true;
-  if (c.ownerId === userId) return true;
+  if (c.ownerId === userId || (ownerId && c.ownerId === ownerId)) return true;
   return !!getSubs(userId)[id];
 }
 

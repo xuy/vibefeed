@@ -141,6 +141,16 @@ test("channelVisibleTo: public to all, private only to owner or subscriber", () 
   assert.ok(bus.channelVisibleTo(OWNER, "priv"));
 });
 
+test("channelVisibleTo: owner sees own lane via ownerId even when consumer userId differs", () => {
+  reset();
+  bus.ensureOwner("acct_owner", "owner");
+  bus.createChannel({ id: "lane", title: "Lane", visibility: "private" }, "acct_owner");
+  // A token whose consumer userId ("consumerX") differs from its ownerId ("acct_owner") — the
+  // owner must still see the lane it owns, even though consumerX never subscribed.
+  assert.ok(!bus.channelVisibleTo("consumerX", "lane")); // no ownerId passed → hidden
+  assert.ok(bus.channelVisibleTo("consumerX", "lane", "acct_owner")); // ownerId matches → visible
+});
+
 // --- ownership guard on push ------------------------------------------------
 test("push to a channel you do not own is rejected", () => {
   const c = setup();
