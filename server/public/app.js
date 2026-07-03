@@ -18,7 +18,14 @@ const baseClean = () => cfg.base.replace(/\/$/, "");
 function url(p) { return baseClean() + p; }
 
 // ---------- api ----------
-function uheaders(extra) { return { "X-Vibefeed-User": cfg.user, ...(extra || {}) }; }
+// Always carry the browser identity; also attach the bearer token when one is configured so
+// consumer reads (feed/channels/history) authenticate in hosted mode. In self-host the token is
+// ignored for identity, so this is harmless there.
+function uheaders(extra) {
+  const h = { "X-Vibefeed-User": cfg.user, ...(extra || {}) };
+  if (cfg.key && !h.Authorization) h.Authorization = "Bearer " + cfg.key;
+  return h;
+}
 async function apiGet(p) { const r = await fetch(url(p), { headers: uheaders() }); return wrap(r); }
 async function apiSend(method, p, body, auth) {
   const headers = uheaders(auth ? { "Content-Type": "application/json", Authorization: "Bearer " + cfg.key } : { "Content-Type": "application/json" });

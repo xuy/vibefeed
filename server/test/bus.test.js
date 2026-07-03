@@ -124,6 +124,23 @@ test("a stranger cannot subscribe to someone else's private channel", () => {
   assert.throws(() => bus.subscribe("stranger", "secret"), /private/);
 });
 
+// --- single-channel visibility (no metadata leak by id) ---------------------
+test("channelVisibleTo: public to all, private only to owner or subscriber", () => {
+  reset();
+  bus.ensureOwner(OWNER, "test owner");
+  bus.createChannel({ id: "pub", title: "Pub", visibility: "public" }, OWNER);
+  bus.createChannel({ id: "priv", title: "Priv", visibility: "private" }, OWNER);
+  bus.ensureUser("stranger");
+
+  assert.ok(bus.channelVisibleTo("stranger", "pub")); // public → visible
+  assert.ok(!bus.channelVisibleTo("stranger", "priv")); // private → hidden from stranger
+  assert.ok(bus.channelVisibleTo(OWNER, "priv")); // owner → visible
+  assert.ok(!bus.channelVisibleTo("stranger", "nope")); // missing → not visible (no leak)
+
+  bus.subscribe(OWNER, "priv"); // owner subscribes; a subscriber can see it too
+  assert.ok(bus.channelVisibleTo(OWNER, "priv"));
+});
+
 // --- ownership guard on push ------------------------------------------------
 test("push to a channel you do not own is rejected", () => {
   const c = setup();

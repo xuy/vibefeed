@@ -26,14 +26,72 @@ export function ensureOwner(ownerId, label) {
   if (!db.owners[ownerId]) { db.owners[ownerId] = { id: ownerId, label: label || ownerId }; save(); }
   return db.owners[ownerId];
 }
-export function registerKey(key, ownerId, label) {
-  db.keys[hashKey(key)] = { id: "key_" + crypto.randomUUID().slice(0, 8), ownerId, label: label || "", createdAt: new Date().toISOString() };
+// v0 god-token grant: create lanes, push to any owned lane, and read the feed. Teams (spec §3
+// rule 3) are just new scope combinations on the same model, not a new auth system.
+export const DEFAULT_SCOPES = ["create:lane", "push:lane/*", "read:feed"];
+
+// A key record carries a DISTINCT (userId, ownerId) pair (spec §3 rule 1 — the two happen to
+// coincide in v0 but are never merged in the data layer) plus its granted scopes.
+export function registerKey(key, ownerId, label, opts = {}) {
+  db.keys[hashKey(key)] = {
+    id: "key_" + crypto.randomUUID().slice(0, 8),
+    ownerId,
+    userId: opts.userId || ownerId,
+    scopes: opts.scopes || DEFAULT_SCOPES,
+    label: label || "",
+    createdAt: new Date().toISOString(),
+  };
   save();
 }
-export function mintKey(ownerId, label) {
+export function mintKey(ownerId, label, opts = {}) {
   const key = "vf_pk_" + crypto.randomBytes(18).toString("hex");
-  registerKey(key, ownerId, label);
+  registerKey(key, ownerId, label, opts);
   return key; // plaintext returned once; only the hash is persisted
+}
+
+// Unified token resolution: one bearer token → { userId, ownerId, scopes }. Consumer routes
+// read userId; producer routes read ownerId and check scope. Returns null for empty/unknown.
+export function resolveToken(token) {
+  if (!token) return null;
+  const rec = db.keys[hashKey(token)];
+  if (!rec) return null;
+  return { userId: rec.userId || rec.ownerId, ownerId: rec.ownerId, scopes: rec.scopes || DEFAULT_SCOPES };
+}
+
+// Resolve the consumer identity for a request.
+//   • hosted: identity comes ONLY from a read-scoped bearer token — the X-Vibefeed-User header
+//     is untrusted (it would let anyone impersonate another user). Missing/unscoped → 401.
+//   • none (self-host): identity is the stable per-browser header, exactly as before T-10. A
+//     bearer token here is a PRODUCER credential only and must not change consumer identity —
+//     the extension sends both headers whenever a token is set, and per-browser feed/subs/history
+//     must stay intact.
+export function consumerIdentity({ authMode, token, headerUser }) {
+  if (authMode === "hosted") {
+    const auth = resolveToken(token);
+    if (!auth || !hasScope(auth.scopes, "read:feed")) throw httpErr(401, "authentication required");
+    return auth.userId;
+  }
+  return headerUser;
+}
+
+function scopeMatches(granted, needed) {
+  if (granted === needed) return true;
+  if (granted.endsWith("/*")) return needed.startsWith(granted.slice(0, -1)); // "push:lane/*" ⊇ "push:lane/x"
+  return false;
+}
+export function hasScope(scopes, needed) {
+  return (scopes || []).some((s) => scopeMatches(s, needed));
+}
+
+// Backfill/repair a key record's identity in place. Used to upgrade a pre-T-10 boot key (which
+// has no userId) to the correct consumer identity without re-minting it.
+export function setKeyIdentity(key, { userId, scopes } = {}) {
+  const rec = db.keys[hashKey(key)];
+  if (!rec) return;
+  if (userId != null) rec.userId = userId;
+  if (scopes != null) rec.scopes = scopes;
+  if (rec.scopes == null) rec.scopes = DEFAULT_SCOPES;
+  save();
 }
 
 // --- channels --------------------------------------------------------------
@@ -64,6 +122,17 @@ export function createChannel(spec, ownerId) {
 }
 
 export function getChannel(id) { return db.channels[id] || null; }
+
+// Is this channel visible to this user? Public channels are visible to everyone; private/
+// unlisted ones only to their owner or a subscriber. Used to gate single-channel lookups so a
+// hosted caller can't read private lane metadata by guessing its id.
+export function channelVisibleTo(userId, id) {
+  const c = db.channels[id];
+  if (!c) return false;
+  if (c.visibility === "public") return true;
+  if (c.ownerId === userId) return true;
+  return !!getSubs(userId)[id];
+}
 
 // Channels visible to a user: public ones, plus any they own or are subscribed to.
 export function listChannels(userId) {
@@ -249,7 +318,18 @@ export function stats(userId) {
   };
 }
 
-export function init() { load(); }
+export function init() {
+  load();
+  // Migrate pre-T-10 key records that predate userId/scopes so resolveToken never yields
+  // undefined fields. Boot key gets a targeted LOCAL_USER backfill in bootstrap; here we only
+  // fill in safe defaults (userId := ownerId) for any other legacy keys.
+  let changed = false;
+  for (const rec of Object.values(db.keys)) {
+    if (rec.userId == null) { rec.userId = rec.ownerId; changed = true; }
+    if (rec.scopes == null) { rec.scopes = DEFAULT_SCOPES; changed = true; }
+  }
+  if (changed) save();
+}
 
 // --- tiny utils ------------------------------------------------------------
 function slugify(s) { return String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48); }
