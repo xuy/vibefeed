@@ -14,7 +14,19 @@ const app = express();
 app.use(express.json({ limit: "256kb" }));
 
 const PORT = process.env.PORT || 4000;
+const AUTH_MODE = process.env.AUTH_MODE || "none"; // "none" (self-host) | "hosted"
+if (!["none", "hosted"].includes(AUTH_MODE)) {
+  // Fail closed: an unrecognized value (e.g. a typo like "HOSTED") must never silently degrade to
+  // the header-trusting self-host path in what was meant to be a hosted deployment.
+  console.error(`[vibefeed] invalid AUTH_MODE="${AUTH_MODE}" — expected "none" or "hosted"`);
+  process.exit(1);
+}
 let DEFAULT_KEY = null; // the boot publisher key, revealed only to loopback callers
+
+function bearer(req) {
+  const m = /^Bearer (.+)$/.exec(req.get("Authorization") || "");
+  return m && m[1];
+}
 
 // Admin web console (static). Served at / — drives the same /v1 API you'd use programmatically.
 app.use(express.static(path.join(__dirname, "../public")));
@@ -30,18 +42,29 @@ app.use((req, res, next) => {
 // Consumer identity. Clients send a stable random id via X-Vibefeed-User so each browser gets
 // its own subscriptions/feed/history on the shared bus (no login). Falls back to "local" for
 // bare API calls. ensureUser seeds a brand-new id with the public channels on first contact.
+// Consumer identity. A bearer token with read scope names the user (hosted); otherwise fall
+// back to the X-Vibefeed-User header (self-host, unchanged). ensureUser seeds a brand-new id
+// with the public channels on first contact.
 function user(req) {
-  const u = req.get("X-Vibefeed-User") || req.query.user || LOCAL_USER;
+  const u = bus.consumerIdentity({
+    authMode: AUTH_MODE,
+    token: bearer(req),
+    headerUser: req.get("X-Vibefeed-User") || req.query.user || LOCAL_USER,
+  });
   bus.ensureUser(u);
   return u;
 }
 
-// Producer auth: a valid publisher key resolves to its owner; routes check channel ownership.
+// Producer auth: a valid bearer token resolves to { userId, ownerId, scopes }. Producer routes
+// read ownerId (routes then check channel ownership) and require a push/create scope.
 function publisher(req, res, next) {
-  const m = /^Bearer (.+)$/.exec(req.get("Authorization") || "");
-  const ownerId = bus.ownerForKey(m && m[1]);
-  if (!ownerId) return res.status(401).json({ error: "invalid or missing publisher key" });
-  req.ownerId = ownerId;
+  const auth = bus.resolveToken(bearer(req));
+  if (!auth) return res.status(401).json({ error: "invalid or missing publisher key" });
+  if (!auth.scopes.some((s) => s.startsWith("push:") || s.startsWith("create:"))) {
+    return res.status(403).json({ error: "token lacks producer scope" });
+  }
+  req.auth = auth;
+  req.ownerId = auth.ownerId;
   next();
 }
 
@@ -53,7 +76,13 @@ function wrap(fn) {
 }
 
 // ---- health + client display config --------------------------------------
-app.get("/health", (req, res) => res.json({ ok: true, ...bus.stats(user(req)) }));
+// Liveness probe: always 200 regardless of auth mode. Per-user stats are attached only when the
+// caller resolves to an identity (never required — hosted health checks carry no token).
+app.get("/health", (req, res) => {
+  let stats = {};
+  try { stats = bus.stats(user(req)); } catch { /* unauthenticated probe in hosted mode */ }
+  res.json({ ok: true, ...stats });
+});
 
 // Loopback-only convenience: hands the local admin console the default publisher key so you
 // don't have to copy it from the logs. Returns 403 to any non-loopback caller (e.g. on Fly),
@@ -86,25 +115,45 @@ app.post("/v1/subscriptions", wrap((req) => {
 }));
 
 // ---- producer: channels + item push --------------------------------------
-app.post("/v1/channels", publisher, wrap((req) => ({ channel: bus.createChannel(req.body || {}, req.ownerId) })));
+app.post("/v1/channels", publisher, wrap((req) => {
+  if (!bus.hasScope(req.auth.scopes, "create:lane")) {
+    const e = new Error("token lacks create:lane scope"); e.status = 403; throw e;
+  }
+  return { channel: bus.createChannel(req.body || {}, req.ownerId) };
+}));
 app.get("/v1/channels/:id", wrap((req) => {
+  const notFound = () => { const e = new Error("not found"); e.status = 404; throw e; };
+  // Hosted: authenticate BEFORE any lookup so unauth callers always get 401 (never a 404-vs-401
+  // oracle that would let them enumerate private lane ids), then gate on visibility.
+  if (AUTH_MODE === "hosted") {
+    const u = user(req); // 401s without a valid read token
+    if (!bus.channelVisibleTo(u, req.params.id)) notFound();
+  }
+  // Self-host ("none") is a single trust domain — keep today's behavior (metadata by id).
   const c = bus.getChannel(req.params.id);
-  if (!c) { const e = new Error("not found"); e.status = 404; throw e; }
+  if (!c) notFound();
   return { channel: { id: c.id, title: c.title, description: c.description, accent: c.accent, kind: c.kind, visibility: c.visibility } };
 }));
 app.post("/v1/channels/:id/items", publisher, wrap((req) => {
+  if (!bus.hasScope(req.auth.scopes, "push:lane/" + req.params.id)) {
+    const e = new Error("token not scoped to push to this lane"); e.status = 403; throw e;
+  }
   const { item, deduped } = bus.pushItem(req.params.id, req.body || {}, req.ownerId);
   return { id: item.id, deduped };
 }));
-// Convenience: mint an additional publisher key for the authenticated owner.
-app.post("/v1/keys", publisher, wrap((req) => ({ key: bus.mintKey(req.ownerId, (req.body || {}).label || "") })));
+// Convenience: mint an additional publisher key for the authenticated owner. The new key
+// inherits the CALLER's scopes (never more) so a narrow lane-scoped token can't exchange itself
+// for a wildcard god-token — no privilege escalation through minting.
+app.post("/v1/keys", publisher, wrap((req) => ({
+  key: bus.mintKey(req.ownerId, (req.body || {}).label || "", { userId: req.auth.userId, scopes: req.auth.scopes }),
+})));
 
 // ---- boot ----------------------------------------------------------------
 bus.init();
 const { key } = bootstrap();
 DEFAULT_KEY = key;
 app.listen(PORT, () => {
-  console.log(`[vibefeed] bus on http://localhost:${PORT}`);
+  console.log(`[vibefeed] bus on http://localhost:${PORT} (auth mode: ${AUTH_MODE})`);
   console.log(`[vibefeed] default publisher key: ${key}${process.env.VIBEFEED_KEY ? "" : "  (ephemeral — set VIBEFEED_KEY to persist)"}`);
   if (process.env.RUN_DEFAULT_PUSHERS !== "0") {
     startPushers(`http://localhost:${PORT}`, key).catch((e) => console.warn("[vibefeed] pushers:", e.message));
