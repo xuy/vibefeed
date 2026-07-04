@@ -18,9 +18,8 @@ You don't file anything. You tell your AI agent one sentence — a **recipe** �
 > *"Queue these Hacker News links to read while I'm waiting on the AI."*
 > *"Resurface the commitments I made in today's meetings until I actually act on them."*
 
-That sentence becomes a stream of **cards**. whileaway shows the single best one per moment —
-spaced out, deduped, expiring when it should — so it feels like a feed that's alive, not a to-do
-list judging you.
+Those become **cards**. whileaway shows the single best one per moment — spaced out, deduped,
+expiring when it should — so it feels like a feed that's alive, not a to-do list judging you.
 
 ## Try it in two minutes
 
