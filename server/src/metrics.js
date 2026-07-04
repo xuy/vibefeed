@@ -67,8 +67,8 @@ export function snapshot() {
     // gauges (current state)
     owners: Object.keys(db.owners || {}).length,
     liveTokens: Object.keys(db.keys || {}).length,
-    lanes: Object.keys(db.channels || {}).length,
-    items: Object.keys(db.items || {}).length,
+    lanes: Object.keys(db.lanes || {}).length,
+    cards: Object.keys(db.cards || {}).length,
     activatedUsers: activatedUsers.size,
     seenUsers: seenUsers.size,
   };
