@@ -39,6 +39,12 @@ async function apiPost(p, body, cookie) {
 async function unwrap(r) { let b = null; if (r.status !== 204) { try { b = await r.json(); } catch (_) {} } return { status: r.status, ok: r.ok, body: b }; }
 
 let toastT; function toast(m, bad) { const t = $("toast"); t.textContent = m; t.style.background = bad ? "#ec5b5b" : "#17162e"; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
+// clipboard API is absent outside a secure context (e.g. self-host over plain http on a LAN IP) —
+// guard so a copy click never throws an uncaught TypeError.
+function safeCopy(text, msg) {
+  if (navigator.clipboard) navigator.clipboard.writeText(text || "").then(() => toast(msg || "Copied")).catch(() => toast("couldn't copy", true));
+  else toast("copy not supported on this connection", true);
+}
 function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 function hl(s) { s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); return s.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="s">$1</span>'); }
 function timeAgo(ts) { if (!ts) return ""; const s = Math.max(0, (Date.now() - new Date(ts)) / 1000); if (s < 90) return "just now"; const m = s / 60; if (m < 60) return Math.round(m) + "m ago"; const hh = m / 60; if (hh < 24) return Math.round(hh) + "h ago"; return Math.round(hh / 24) + "d ago"; }
@@ -143,12 +149,12 @@ async function renderConnected() {
 // ---------- copy wires ----------
 document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-copy-text]"); // static landing recipes: copy the literal text
-  if (t) { navigator.clipboard.writeText(t.dataset.copyText || "").then(() => toast("Recipe copied — paste it to your agent")); return; }
+  if (t) { safeCopy(t.dataset.copyText, "Recipe copied — paste it to your agent"); return; }
   const b = e.target.closest("[data-copy]"); if (!b) return;
-  const el = $(b.dataset.copy); navigator.clipboard.writeText((el && el._raw) || "").then(() => toast("Copied"));
+  const el = $(b.dataset.copy); safeCopy((el && el._raw) || "");
 });
-$("copyToken").addEventListener("click", () => { if (!cfg.token) return toast("no token yet", true); navigator.clipboard.writeText(cfg.token).then(() => toast("Token copied")); });
-$("copySetup").addEventListener("click", () => { if (!cfg.token) return toast("generate a token first", true); navigator.clipboard.writeText(setupCode()).then(() => toast("Setup code copied — paste it in the extension")); });
+$("copyToken").addEventListener("click", () => { if (!cfg.token) return toast("no token yet", true); safeCopy(cfg.token, "Token copied"); });
+$("copySetup").addEventListener("click", () => { if (!cfg.token) return toast("generate a token first", true); safeCopy(setupCode(), "Setup code copied — paste it in the extension"); });
 $("mintToken").addEventListener("click", mintToken);
 
 // ---------- sign in ----------
@@ -160,7 +166,7 @@ $("sendLink").addEventListener("click", async () => {
     const r = await fetch(url("/api/auth/sign-in/magic-link"), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ email, callbackURL: "/" }) });
     if (r.ok) $("signinHint").textContent = "Check your email and click the link to finish. (Running locally? The link is printed in the server log.)";
     else $("signinHint").textContent = "Couldn't send the link — try again.";
-  } catch (_) { $("signinHint").textContent = "Network error — is the bus reachable?"; }
+  } catch (_) { $("signinHint").textContent = "Network error — is the server reachable?"; }
   $("sendLink").disabled = false;
 });
 $("email").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sendLink").click(); });
