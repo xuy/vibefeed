@@ -113,10 +113,9 @@ test("one token both pushes to an owned lane and pulls that user's feed", () => 
   const auth = bus.resolveToken(key);
 
   bus.ensureOwner("u1");
-  bus.createChannel({ id: "mylane", title: "Mine", visibility: "private" }, auth.ownerId);
-  bus.subscribe(auth.userId, "mylane"); // owner may subscribe to their own private lane
+  bus.createChannel({ id: "mylane", title: "Mine", visibility: "private" }, auth.ownerId); // auto-subscribes the owner
 
-  // push (producer side: ownerId + scope)
+  // push (producer side: ownerId + scope) — addressed by bare slug within the owner's namespace
   assert.ok(bus.hasScope(auth.scopes, "push:lane/mylane"));
   bus.pushItem("mylane", { title: "from my agent" }, auth.ownerId);
 

@@ -68,7 +68,7 @@ test("buildCardBody nests delivery fields and passes dedupe_key through", () => 
 test("create_lane then list_lanes shows the lane", async () => {
   await client.createLane({ lane: "reading", title: "Reading", visibility: "public" });
   const lanes = await client.listLanes();
-  assert.ok(lanes.some((l) => l.id === "reading" && l.title === "Reading"));
+  assert.ok(lanes.some((l) => l.slug === "reading" && l.title === "Reading"));
 });
 
 // --- push_card + delivery --------------------------------------------------
@@ -110,7 +110,7 @@ test("push_card handles a non-slug lane name (slugified to match the stored lane
   assert.ok(res.id);
   assert.equal(res.lane, "spanish-vocab"); // canonical slug, and the push actually landed
   const lanes = await client.listLanes();
-  assert.ok(lanes.some((l) => l.id === "spanish-vocab"));
+  assert.ok(lanes.some((l) => l.slug === "spanish-vocab"));
 });
 
 // --- push_deck -------------------------------------------------------------

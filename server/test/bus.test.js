@@ -58,7 +58,7 @@ test("dedupe_key upserts in place instead of creating a second item", () => {
   assert.equal(b.deduped, true);
   assert.equal(b.item.id, a.item.id); // same record
   assert.equal(b.item.title, "v2"); // content refreshed in place
-  assert.equal(db.itemsByChannel[c].length, 1); // only one item ever stored
+  assert.equal(db.itemsByChannel[bus.laneId(OWNER, c)].length, 1); // only one item ever stored (global id)
 });
 
 // --- must_see re-surfaces until acknowledged --------------------------------
@@ -119,9 +119,9 @@ test("consecutive deliveries prefer a different channel", () => {
 test("a stranger cannot subscribe to someone else's private channel", () => {
   reset();
   bus.ensureOwner(OWNER, "test owner");
-  bus.createChannel({ id: "secret", title: "Secret", visibility: "private" }, OWNER);
+  const secret = bus.createChannel({ id: "secret", title: "Secret", visibility: "private" }, OWNER);
   bus.ensureUser("stranger"); // gets no private channels
-  assert.throws(() => bus.subscribe("stranger", "secret"), /private/);
+  assert.throws(() => bus.subscribe("stranger", secret.id), /private/);
 });
 
 // --- owner receives what they push to their own lane ------------------------
@@ -145,39 +145,59 @@ test("creating a lane before first feed still seeds the owner's public subscript
   bus.createChannel({ id: "mylane", title: "Mine", visibility: "private" }, "acct"); // acct creates a lane FIRST
   const chans = bus.listChannels("acct");
   // Owner-subscribe must not have short-circuited public seeding:
-  assert.ok(chans.some((c) => c.id === "pub1" && c.subscribed), "public channel should still be seeded");
-  assert.ok(chans.some((c) => c.id === "mylane" && c.subscribed), "own new lane is subscribed");
+  assert.ok(chans.some((c) => c.slug === "pub1" && c.subscribed), "public channel should still be seeded");
+  assert.ok(chans.some((c) => c.slug === "mylane" && c.subscribed), "own new lane is subscribed");
 });
 
 // --- single-channel visibility (no metadata leak by id) ---------------------
 test("channelVisibleTo: public to all, private only to owner or subscriber", () => {
   reset();
   bus.ensureOwner(OWNER, "test owner");
-  bus.createChannel({ id: "pub", title: "Pub", visibility: "public" }, OWNER);
-  bus.createChannel({ id: "priv", title: "Priv", visibility: "private" }, OWNER);
+  const pub = bus.createChannel({ id: "pub", title: "Pub", visibility: "public" }, OWNER);
+  const priv = bus.createChannel({ id: "priv", title: "Priv", visibility: "private" }, OWNER);
   bus.ensureUser("stranger");
 
-  assert.ok(bus.channelVisibleTo("stranger", "pub")); // public → visible
-  assert.ok(!bus.channelVisibleTo("stranger", "priv")); // private → hidden from stranger
-  assert.ok(bus.channelVisibleTo(OWNER, "priv")); // owner → visible
-  assert.ok(!bus.channelVisibleTo("stranger", "nope")); // missing → not visible (no leak)
+  assert.ok(bus.channelVisibleTo("stranger", pub.id)); // public → visible
+  assert.ok(!bus.channelVisibleTo("stranger", priv.id)); // private → hidden from stranger
+  assert.ok(bus.channelVisibleTo(OWNER, priv.id)); // owner → visible
+  assert.ok(!bus.channelVisibleTo("stranger", bus.laneId(OWNER, "nope"))); // missing → not visible (no leak)
 
-  bus.subscribe(OWNER, "priv"); // owner subscribes; a subscriber can see it too
-  assert.ok(bus.channelVisibleTo(OWNER, "priv"));
+  bus.subscribe(OWNER, priv.id); // owner subscribes; a subscriber can see it too
+  assert.ok(bus.channelVisibleTo(OWNER, priv.id));
 });
 
 test("channelVisibleTo: owner sees own lane via ownerId even when consumer userId differs", () => {
   reset();
   bus.ensureOwner("acct_owner", "owner");
-  bus.createChannel({ id: "lane", title: "Lane", visibility: "private" }, "acct_owner");
+  const lane = bus.createChannel({ id: "lane", title: "Lane", visibility: "private" }, "acct_owner");
   // A token whose consumer userId ("consumerX") differs from its ownerId ("acct_owner") — the
   // owner must still see the lane it owns, even though consumerX never subscribed.
-  assert.ok(!bus.channelVisibleTo("consumerX", "lane")); // no ownerId passed → hidden
-  assert.ok(bus.channelVisibleTo("consumerX", "lane", "acct_owner")); // ownerId matches → visible
+  assert.ok(!bus.channelVisibleTo("consumerX", lane.id)); // no ownerId passed → hidden
+  assert.ok(bus.channelVisibleTo("consumerX", lane.id, "acct_owner")); // ownerId matches → visible
+});
+
+// --- per-owner namespacing (T-15) -------------------------------------------
+test("two owners can each hold a same-named lane without colliding", () => {
+  reset();
+  bus.ensureOwner("alice"); bus.ensureOwner("bob");
+  const a = bus.createChannel({ id: "spanish", title: "Alice's Spanish", visibility: "private" }, "alice");
+  const b = bus.createChannel({ id: "spanish", title: "Bob's Spanish", visibility: "private" }, "bob");
+  assert.notEqual(a.id, b.id); // distinct global ids: alice:spanish vs bob:spanish
+  assert.equal(a.slug, "spanish"); assert.equal(b.slug, "spanish");
+
+  bus.pushItem("spanish", { title: "hola from alice" }, "alice");
+  bus.pushItem("spanish", { title: "hola from bob" }, "bob");
+
+  assert.equal(bus.next("alice").title, "hola from alice"); // each owner sees only their own lane
+  assert.equal(bus.next("bob").title, "hola from bob");
 });
 
 // --- ownership guard on push ------------------------------------------------
-test("push to a channel you do not own is rejected", () => {
-  const c = setup();
-  assert.throws(() => bus.pushItem(c, { title: "nope" }, "owner_other"), /do not own/);
+test("you cannot push into another owner's lane — refs resolve within your own namespace", () => {
+  const c = setup(); // lane "c1" owned by OWNER
+  // A different owner pushing "c1" resolves to `owner_other:c1`, which doesn't exist — so there's
+  // no way to even address someone else's lane (stronger than the old cross-owner 403).
+  assert.throws(() => bus.pushItem(c, { title: "nope" }, "owner_other"), /no such channel/);
+  // And OWNER's lane is untouched.
+  assert.equal((db.itemsByChannel[bus.laneId(OWNER, c)] || []).length, 0);
 });

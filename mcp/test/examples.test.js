@@ -48,8 +48,8 @@ for (const ex of EXAMPLES) {
     if (ex.expect.id) assert.ok(out.id, `${ex.id} should return an item id`);
     // The lane the example targets exists afterward.
     const lanes = await client.listLanes();
-    const laneId = client.laneId(ex.args.lane);
-    assert.ok(lanes.some((l) => l.id === laneId), `lane ${laneId} should exist after ${ex.id}`);
+    const slug = client.laneId(ex.args.lane);
+    assert.ok(lanes.some((l) => l.slug === slug), `lane ${slug} should exist after ${ex.id}`);
   });
 }
 
