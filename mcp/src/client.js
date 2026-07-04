@@ -79,15 +79,17 @@ export class WhileawayClient {
   // genuine 404 (lane doesn't exist yet) triggers a create-then-retry, using the canonical id the
   // server returns.
   async _pushItem(lane, body, laneOpts) {
-    const id = this.laneId(lane);
-    const path = (i) => `/v1/channels/${encodeURIComponent(i)}/items`;
+    // Push by owner-scoped SLUG — the server resolves it within the caller's own namespace
+    // (`ownerId:slug`). Client and server slugify identically, so the create-then-retry below
+    // lands on the same lane.
+    const slug = this.laneId(lane);
+    const path = `/v1/channels/${encodeURIComponent(slug)}/items`;
     try {
-      return { data: (await this._req("POST", path(id), body)).data, laneId: id };
+      return { data: (await this._req("POST", path, body)).data, laneId: slug };
     } catch (e) {
       if (e.status !== 404) throw e;
-      const channel = await this.createLane({ lane, ...(laneOpts || {}) });
-      const cid = (channel && channel.id) || id;
-      return { data: (await this._req("POST", path(cid), body)).data, laneId: cid };
+      await this.createLane({ lane, ...(laneOpts || {}) }); // create the missing lane, then retry
+      return { data: (await this._req("POST", path, body)).data, laneId: slug };
     }
   }
 

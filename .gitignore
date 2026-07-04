@@ -7,3 +7,4 @@ server/*.db
 server/*.db-wal
 server/*.db-shm
 .env
+server/.vibefeed-state.json

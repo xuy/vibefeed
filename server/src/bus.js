@@ -96,12 +96,18 @@ export function setKeyIdentity(key, { userId, scopes } = {}) {
 }
 
 // --- channels --------------------------------------------------------------
+// Lanes are namespaced PER OWNER: the stored global id is `${ownerId}:${slug}` (see the namespace
+// model — a flat handle namespace sits on top later, owner-scoped slugs underneath). So two owners
+// can each hold a `personal`/`spanish` lane without colliding, and producers address their own
+// lanes by bare slug.
+export function laneId(ownerId, ref) { return ownerId + ":" + slugify(ref); }
+
 export function createChannel(spec, ownerId) {
-  const id = slugify(spec.id || spec.slug || spec.title);
-  if (!id) throw httpErr(400, "channel needs a title or slug");
+  const slug = slugify(spec.id || spec.slug || spec.title);
+  if (!slug) throw httpErr(400, "channel needs a title or slug");
+  const id = ownerId + ":" + slug;
   const existing = db.channels[id];
   if (existing) {
-    if (existing.ownerId !== ownerId) throw httpErr(409, "channel id taken by another owner");
     Object.assign(existing, pick(spec, ["title", "description", "icon", "accent", "kind", "visibility"]));
     save();
     return existing;
@@ -111,7 +117,8 @@ export function createChannel(spec, ownerId) {
   }
   const ch = {
     id,
-    title: str(spec.title || id, 80),
+    slug,
+    title: str(spec.title || slug, 80),
     description: str(spec.description || "", 280),
     icon: str(spec.icon || "", 8),
     accent: /^#[0-9a-fA-F]{6}$/.test(spec.accent || "") ? spec.accent : "#3a86ff",
@@ -153,17 +160,19 @@ export function listChannels(userId) {
   return Object.values(db.channels)
     .filter((c) => c.visibility === "public" || c.ownerId === userId || subs[c.id])
     .map((c) => ({
-      id: c.id, title: c.title, description: c.description, icon: c.icon, accent: c.accent,
+      id: c.id, slug: c.slug, title: c.title, description: c.description, icon: c.icon, accent: c.accent,
       kind: c.kind, visibility: c.visibility, owned: c.ownerId === userId,
       subscribed: !!subs[c.id], muted: !!(subs[c.id] && subs[c.id].muted),
     }));
 }
 
 // --- items / push ----------------------------------------------------------
-export function pushItem(channelId, raw, ownerId) {
+// `ref` is an owner-scoped slug (or lane name); it resolves within the caller's own namespace, so
+// ownership holds by construction — you can only ever push to your own lanes.
+export function pushItem(ref, raw, ownerId) {
+  const channelId = ownerId + ":" + slugify(ref);
   const ch = db.channels[channelId];
   if (!ch) throw httpErr(404, "no such channel");
-  if (ch.ownerId !== ownerId) throw httpErr(403, "you do not own this channel");
   const item = normalizeItem(raw, ch);
 
   const dup = findByDedupe(channelId, item.dedupeKey);

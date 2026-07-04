@@ -33,10 +33,10 @@ export function bootstrap() {
   }
 
   for (const spec of DEFAULT_CHANNELS) {
-    bus.createChannel(spec, OWNER_ID);
+    const ch = bus.createChannel(spec, OWNER_ID); // ch.id is the global `${OWNER_ID}:${slug}`
     // Seed the local consumer (force: includes the private `personal` lane, which the public
     // subscribe route would reject). Real per-user clients get their own set via ensureUser().
-    if (!(db.subs[LOCAL_USER] && db.subs[LOCAL_USER][spec.id])) bus.subscribe(LOCAL_USER, spec.id, { force: true });
+    if (!(db.subs[LOCAL_USER] && db.subs[LOCAL_USER][ch.id])) bus.subscribe(LOCAL_USER, ch.id, { force: true });
   }
   return { ownerId: OWNER_ID, key };
 }
