@@ -1,9 +1,10 @@
 FROM node:20-slim
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Full install (incl. @better-auth/cli): the release migration below needs it. better-sqlite3
-# ships a prebuilt binary for this platform, so no compiler toolchain is required.
-RUN npm ci
+# Full install INCLUDING devDeps: the boot-time `auth:migrate` needs @better-auth/cli (a devDep).
+# --include=dev is explicit so a future NODE_ENV=production can't silently drop it and crash-loop
+# the container. better-sqlite3 ships a prebuilt binary for this platform (no toolchain needed).
+RUN npm ci --include=dev
 COPY src ./src
 COPY clients ./clients
 COPY public ./public

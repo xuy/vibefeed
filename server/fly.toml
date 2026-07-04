@@ -3,12 +3,18 @@
 #   fly volumes create whileaway_data --size 1 --region iad --app whileaway-bus -y
 #   fly secrets set WHILEAWAY_AUTH_SECRET=$(openssl rand -hex 32) --app whileaway-bus
 #   fly secrets set WHILEAWAY_KEY=$(openssl rand -hex 18) --app whileaway-bus
+#   fly secrets set WHILEAWAY_METRICS_TOKEN=$(openssl rand -hex 24) --app whileaway-bus
 #   fly deploy --app whileaway-bus --ha=false
 app = "whileaway-bus"
 primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"
+
+# Single volume-backed machine: a rolling deploy can't start a second machine on the one volume
+# (it's locked by the running machine), so replace in place. Brief downtime on deploy is fine at v0.
+[deploy]
+  strategy = "immediate"
 
 [env]
   PORT = "8080"

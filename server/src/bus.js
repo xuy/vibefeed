@@ -318,7 +318,7 @@ export function next(userId) {
   st.lastDeliveredAt = new Date().toISOString();
   (db.cursor[userId] || (db.cursor[userId] = {})).lastChannelId = chosen.channelId;
   save();
-  bump("delivered"); // seen-rate denominator (T-63)
+  bump("deliveries"); // total impressions; the seen-rate denominator is derived per-card (T-63)
   return decorate(chosen);
 }
 
@@ -343,7 +343,7 @@ export function markSeen(userId, itemId) {
   if (!st.seenAt) {
     st.seenAt = new Date().toISOString();
     if (it) addHistory(userId, decorate(it));
-    bump("seen"); // seen-rate numerator, counted once per (user,item) (T-63)
+    // seen-rate numerator is derived from st.seenAt in metrics.snapshot() — no counter to keep.
   }
   save();
   return { ok: true };

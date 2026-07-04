@@ -29,30 +29,48 @@ test("push bumps pushes; dedupe upsert does not double-count", () => {
   assert.equal(metrics.counterValue("pushes"), 2);
 });
 
-test("delivered and seen drive the headline seen-rate", () => {
+test("delivered and seen drive the headline seen-rate (per distinct card)", () => {
   const c = setup();
   const { item } = bus.pushItem(c, { title: "hi" }, OWNER);
 
   // nothing delivered yet → no rate to report
   assert.equal(metrics.snapshot().seenRate, null);
 
-  bus.next("u1"); // delivered = 1, seen = 0
+  bus.next("u1"); // one card delivered, not yet seen
   let s = metrics.snapshot();
-  assert.equal(s.delivered, 1);
-  assert.equal(s.seen, 0);
+  assert.equal(s.deliveredCards, 1);
+  assert.equal(s.seenCards, 0);
+  assert.equal(s.deliveries, 1);
   assert.equal(s.seenRate, 0);
   assert.equal(s.activatedUsers, 1); // u1 has a delivery
   assert.equal(s.seenUsers, 0);
 
-  bus.markSeen("u1", item.id); // seen = 1
+  bus.markSeen("u1", item.id);
   s = metrics.snapshot();
-  assert.equal(s.seen, 1);
-  assert.equal(s.seenRate, 1); // 1 delivered, 1 seen
+  assert.equal(s.seenCards, 1);
+  assert.equal(s.seenRate, 1); // 1 card delivered, 1 seen
   assert.equal(s.seenUsers, 1);
 
   // re-acking the same card must not inflate the numerator
   bus.markSeen("u1", item.id);
-  assert.equal(metrics.snapshot().seen, 1);
+  assert.equal(metrics.snapshot().seenCards, 1);
+});
+
+test("must_see re-surfacing counts as ONE delivered card, not one per impression", () => {
+  const c = setup();
+  const { item } = bus.pushItem(c, { title: "important", delivery: { class: "must_see" } }, OWNER);
+
+  bus.next("u1"); bus.next("u1"); bus.next("u1"); // re-surfaces 3x while unseen
+  let s = metrics.snapshot();
+  assert.equal(s.deliveries, 3); // three impressions
+  assert.equal(s.deliveredCards, 1); // but one distinct card
+  assert.equal(s.seenRate, 0);
+
+  bus.markSeen("u1", item.id);
+  s = metrics.snapshot();
+  // the fix: seen-rate is 1/1, NOT 1/3 — numerator and denominator share the per-card basis.
+  assert.equal(s.seenRate, 1);
+  assert.equal(s.seenCards, 1);
 });
 
 test("seen-rate is a fraction across multiple deliveries", () => {
@@ -67,8 +85,8 @@ test("seen-rate is a fraction across multiple deliveries", () => {
   bus.next("u1"); bus.next("u1"); // both delivered (round-robin)
   bus.markSeen("u1", a.id); // only one acked
   const s = metrics.snapshot();
-  assert.equal(s.delivered, 2);
-  assert.equal(s.seen, 1);
+  assert.equal(s.deliveredCards, 2);
+  assert.equal(s.seenCards, 1);
   assert.equal(s.seenRate, 0.5);
 });
 

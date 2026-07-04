@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as bus from "./bus.js";
 import { bootstrap, LOCAL_USER } from "./bootstrap.js";
+import { flush } from "./store.js";
 import { startPushers } from "../clients/runner.js";
 import { hit, LIMITS } from "./ratelimit.js";
 import * as metrics from "./metrics.js";
@@ -124,12 +125,16 @@ app.get("/v1/admin/hello", (req, res) => {
 });
 app.get("/v1/feed/config", (_req, res) => res.json(bus.CONFIG));
 
-// Activation & seen-rate funnel (T-63). Aggregate-only, no per-user data. In hosted mode it
-// carries operational numbers, so require a valid bearer token (any resolves) rather than leaving
-// it fully public; self-host ("none") is a single trust domain and stays open.
+// Activation & seen-rate funnel (T-63). Aggregate-only (no per-user rows), but the totals still
+// reveal user/lane counts, so hosted mode requires a dedicated ops token (WHILEAWAY_METRICS_TOKEN)
+// — NOT just any signed-up user's token, which would let anyone watch our growth. Fail closed if
+// the ops token is unset. Self-host ("none") is a single trust domain and stays open.
 app.get("/v1/metrics", (req, res) => {
-  if (AUTH_MODE === "hosted" && !bus.resolveToken(bearer(req))) {
-    return void res.status(401).json({ error: "metrics require a valid token in hosted mode" });
+  if (AUTH_MODE === "hosted") {
+    const ops = process.env.WHILEAWAY_METRICS_TOKEN;
+    if (!ops || bearer(req) !== ops) {
+      return void res.status(401).json({ error: "metrics require the ops token" });
+    }
   }
   res.json(metrics.snapshot());
 });
@@ -244,3 +249,9 @@ app.listen(PORT, () => {
     startPushers(`http://localhost:${PORT}`, key).catch((e) => console.warn("[whileaway] pushers:", e.message));
   }
 });
+
+// Flush debounced state before the machine stops (Fly sends SIGTERM on deploy/restart), so a
+// mutation from the last 300ms isn't lost with the pending save timer.
+for (const sig of ["SIGTERM", "SIGINT"]) {
+  process.on(sig, () => { try { flush(); } finally { process.exit(0); } });
+}
