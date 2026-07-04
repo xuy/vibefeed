@@ -37,8 +37,8 @@ export function counterValue(name) {
 export function snapshot() {
   const c = counters();
 
-  // Derived from live delivery state, all on the same per-(user,item) basis. delivery keys are
-  // `${userId}|${itemId}`; itemIds are `itm_<uuid>` (never contain "|"), and lastIndexOf keeps a
+  // Derived from live delivery state, all on the same per-(user,card) basis. delivery keys are
+  // `${userId}|${cardId}`; cardIds are `card_<uuid>` (never contain "|"), and lastIndexOf keeps a
   // userId that itself contains "|" (self-host browser ids) intact.
   let deliveredCards = 0, seenCards = 0;
   const activatedUsers = new Set();
