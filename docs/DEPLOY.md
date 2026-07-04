@@ -1,6 +1,6 @@
 # Deploy runbook — whileaway bus (hosted)
 
-The hosted instance runs on Fly.io. Live: **https://whileaway.fly.dev**
+The hosted instance runs on Fly.io. Live: **https://whileaway.honestapp.org**
 (app `whileaway`, region `iad`). Config lives in `server/fly.toml` + `server/Dockerfile`.
 
 ## Architecture on Fly
@@ -49,10 +49,10 @@ node-gyp), migrates the auth schema, then boots.
 ## Verify
 
 ```sh
-curl -s https://whileaway.fly.dev/health            # {"ok":true}
-curl -s https://whileaway.fly.dev/privacy -o /dev/null -w "%{http_code}\n"   # 200
+curl -s https://whileaway.honestapp.org/health            # {"ok":true}
+curl -s https://whileaway.honestapp.org/privacy -o /dev/null -w "%{http_code}\n"   # 200
 curl -s -H "Authorization: Bearer $WHILEAWAY_METRICS_TOKEN" \
-     https://whileaway.fly.dev/v1/metrics            # seen-rate + funnel
+     https://whileaway.honestapp.org/v1/metrics            # seen-rate + funnel
 fly logs --app whileaway                             # boot + magic-link lines
 ```
 
@@ -76,8 +76,10 @@ cards aren't double-counted. Also: `signups`, `tokensMinted`, `pushes`, `deliver
   Without the key, links still print to `fly logs` (fail-safe fallback). The default
   `WHILEAWAY_EMAIL_FROM` (`onboarding@resend.dev`) only delivers to your own Resend account
   address — fine for a first test, but verify a domain before real signups.
-- **Custom production domain.** Currently on `whileaway.fly.dev`. To add one:
-  `fly certs add <domain>`, point DNS, then update `WHILEAWAY_URL` + the extension's default base.
+- **Custom domain — done.** Live on **`whileaway.honestapp.org`** (Fly cert issued via Let's
+  Encrypt; A/AAAA records point at the app, DNS-only/grey-cloud on Cloudflare). `WHILEAWAY_URL` and
+  the extension's default base already point here. To move to a different domain later:
+  `fly certs add <domain>`, add its A/AAAA (grey cloud), then re-run the domain sweep.
 - **Google OAuth** (optional): set the two `WHILEAWAY_GOOGLE_*` secrets to enable the Google button.
 
 ## Self-host (no Fly, no accounts)

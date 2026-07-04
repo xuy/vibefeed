@@ -8,7 +8,7 @@ var VF_DEBUG = false; // console logs on the AI page; off by default (silent deg
 
 var VF_ENVS = {
   dev: { api: "http://localhost:4000" },
-  prod: { api: "https://whileaway.fly.dev" },
+  prod: { api: "https://whileaway.honestapp.org" },
 };
 
 var VF_API_BASE = VF_ENVS[VF_ENV].api;

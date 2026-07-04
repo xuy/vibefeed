@@ -19,7 +19,7 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   AUTH_MODE = "hosted"
-  WHILEAWAY_URL = "https://whileaway.fly.dev"
+  WHILEAWAY_URL = "https://whileaway.honestapp.org"
   # Durable state on the mounted volume: our bus store (sqlite) + Better Auth's own DB.
   WHILEAWAY_STORE = "sqlite"
   WHILEAWAY_STATE = "/data/whileaway.db"

@@ -58,7 +58,7 @@ chat, send a prompt → a card appears. (No install? Open `extension/demo.html?b
 
 ## Or use the hosted instance
 
-**[whileaway.fly.dev](https://whileaway.fly.dev)** — sign in with a magic link, and the connect
+**[whileaway.honestapp.org](https://whileaway.honestapp.org)** — sign in with a magic link, and the connect
 page hands you a token, a one-paste extension setup code, and your MCP snippet. (Public email
 signup is landing shortly; self-host works today with zero setup.)
 
@@ -121,7 +121,7 @@ curl -X POST localhost:4000/v1/lanes/personal/cards \
 ## Architecture
 
 ```
-                       hosted: whileaway.fly.dev            self-host: localhost:4000
+                       hosted: whileaway.honestapp.org            self-host: localhost:4000
 ┌─────────────┐  MCP (stdio)  ┌──────────────────────────────────────────┐
 │ Claude/agent│──────────────▶│  whileaway-mcp  ──HTTP──▶  server (Express)│
 └─────────────┘   push_card   └──────────────────────────────────────────┘

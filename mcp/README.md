@@ -8,7 +8,7 @@ It's a thin, stateless wrapper over the whileaway `/v1` API. All the delivery in
 
 | env | default | meaning |
 |-----|---------|---------|
-| `WHILEAWAY_URL` | `http://localhost:4000` | Base URL of your whileaway server (e.g. `https://whileaway.fly.dev`) |
+| `WHILEAWAY_URL` | `http://localhost:4000` | Base URL of your whileaway server (e.g. `https://whileaway.honestapp.org`) |
 | `WHILEAWAY_TOKEN` | — | Bearer token minted from the dashboard (or the self-host boot key) |
 | `WHILEAWAY_LANE` | `personal` | Default lane when a tool call omits one |
 
@@ -16,7 +16,7 @@ It's a thin, stateless wrapper over the whileaway `/v1` API. All the delivery in
 
 ```bash
 claude mcp add whileaway \
-  --env WHILEAWAY_URL=https://whileaway.fly.dev \
+  --env WHILEAWAY_URL=https://whileaway.honestapp.org \
   --env WHILEAWAY_TOKEN=vf_pk_… \
   -- npx -y whileaway-mcp
 ```
@@ -29,7 +29,7 @@ claude mcp add whileaway \
     "whileaway": {
       "command": "npx",
       "args": ["-y", "whileaway-mcp"],
-      "env": { "WHILEAWAY_URL": "https://whileaway.fly.dev", "WHILEAWAY_TOKEN": "vf_pk_…" }
+      "env": { "WHILEAWAY_URL": "https://whileaway.honestapp.org", "WHILEAWAY_TOKEN": "vf_pk_…" }
     }
   }
 }

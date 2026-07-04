@@ -1,6 +1,6 @@
 # Pre-launch gauntlet (T-62)
 
-Final gate run against production (`https://whileaway.fly.dev`) on 2026-07-04, plus the automated
+Final gate run against production (`https://whileaway.honestapp.org`) on 2026-07-04, plus the automated
 suites. **Result: no P0s. Onboarding well under the 5-minute contract.**
 
 ## Onboarding (spec §9, timed)

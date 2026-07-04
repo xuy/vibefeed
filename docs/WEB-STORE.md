@@ -6,7 +6,7 @@ $5 fee, capturing screenshots, clicking Submit) are marked ⚠️. Everything el
 ## Package the extension
 
 Before zipping, set the shipped defaults in `extension/src/config.js`: `VF_ENV = "prod"` (so a
-fresh install points at `whileaway.fly.dev` out of the box) and confirm `VF_DEBUG = false` (no
+fresh install points at `whileaway.honestapp.org` out of the box) and confirm `VF_DEBUG = false` (no
 console output on AI pages — already the default). Then zip the `extension/` directory (manifest at
 the zip root):
 
@@ -23,7 +23,7 @@ zip -r ../whileaway-extension.zip . -x '*.DS_Store'
 - **Summary** (≤132 chars): `While an AI thinks, skim one useful thing — a card from the feed only you publish to. Never reads your prompts or the page.`
 - **Category:** Productivity
 - **Language:** English
-- **Privacy policy URL:** `https://whileaway.fly.dev/privacy` *(live, verified 200)*
+- **Privacy policy URL:** `https://whileaway.honestapp.org/privacy` *(live, verified 200)*
 
 **Description:**
 
@@ -43,7 +43,7 @@ site's "stop" control) and then shows one card you or your agent chose. No page 
 read or transmitted. No analytics, no trackers, no ads.
 
 YOUR FEED, YOUR SERVER
-Point the extension at the hosted instance (whileaway.fly.dev) or self-host the open-source
+Point the extension at the hosted instance (whileaway.honestapp.org) or self-host the open-source
 backend — your data lives wherever you choose. Only you publish to your feed, so spam isn't
 possible; mute or unsubscribe any lane in one tap.
 
@@ -60,7 +60,7 @@ Open source (Apache-2.0).
   "To detect when the AI starts generating a response (by observing the presence of the site's
   'stop generating' control) and to render a small card overlay on the page. No page text,
   prompts, responses, or links are read or transmitted."
-- **Host access to the backend** (`http://localhost:4000/*`, `https://whileaway.fly.dev/*`):
+- **Host access to the backend** (`http://localhost:4000/*`, `https://whileaway.honestapp.org/*`):
   "To fetch the user's next card and, optionally, push cards to the user's own feed."
 - **New-tab override** (`chrome_url_overrides.newtab`): "Optional surface that shows the user's next
   card on the new-tab page. It renders only the user's own feed and reads no browsing data. Users
@@ -78,13 +78,13 @@ Open source (Apache-2.0).
 ## Screenshots ⚠️ (capture these — 1280×800 or 640×400, PNG)
 
 Load the extension unpacked (`chrome://extensions` → Load unpacked → `extension/`), point the
-popup's Backend at `https://whileaway.fly.dev` (paste a setup code from the dashboard), then capture:
+popup's Backend at `https://whileaway.honestapp.org` (paste a setup code from the dashboard), then capture:
 
 1. **The card overlay** — on claude.ai/chatgpt.com mid-generation, the card bottom-right. *(hero shot)*
 2. **The new-tab page** — a card filling a fresh tab.
 3. **The popup** — status, lanes with mute, live preview.
-4. **The connect page** — token + one-paste setup code + MCP snippet (whileaway.fly.dev, signed in).
-5. **The landing** — the thesis hero (whileaway.fly.dev logged out).
+4. **The connect page** — token + one-paste setup code + MCP snippet (whileaway.honestapp.org, signed in).
+5. **The landing** — the thesis hero (whileaway.honestapp.org logged out).
 
 **Promo tile (440×280):** the whileaway gradient logo + the line *"The feed only you can publish to."*
 
