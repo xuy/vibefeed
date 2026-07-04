@@ -63,7 +63,7 @@ Per-token push limit, per-user pull limit, lane count cap, per-user card cap; 42
 Retry-After. *Accept:* tests prove limits; normal single-user usage never trips them.
 
 **T-14 · Production deploy** — deps: T-11, T-12, T-13 · human-assisted (accounts, domain, DNS)
-A Fly host (`whileaway-bus.fly.dev`) is already referenced in the extension manifest — build on
+A Fly host (`whileaway.fly.dev`) is already referenced in the extension manifest — build on
 it: volume for SQLite, HTTPS, custom domain, env docs, deploy runbook in `docs/DEPLOY.md`.
 *Accept:* hosted instance live on the production domain; signup → card in extension works
 end-to-end against it.

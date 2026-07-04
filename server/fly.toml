@@ -1,11 +1,11 @@
 # Fly.io config for the whileaway bus (hosted instance). One-time setup:
-#   fly apps create whileaway-bus
-#   fly volumes create whileaway_data --size 1 --region iad --app whileaway-bus -y
-#   fly secrets set WHILEAWAY_AUTH_SECRET=$(openssl rand -hex 32) --app whileaway-bus
-#   fly secrets set WHILEAWAY_KEY=$(openssl rand -hex 18) --app whileaway-bus
-#   fly secrets set WHILEAWAY_METRICS_TOKEN=$(openssl rand -hex 24) --app whileaway-bus
-#   fly deploy --app whileaway-bus --ha=false
-app = "whileaway-bus"
+#   fly apps create whileaway
+#   fly volumes create whileaway_data --size 1 --region iad --app whileaway -y
+#   fly secrets set WHILEAWAY_AUTH_SECRET=$(openssl rand -hex 32) --app whileaway
+#   fly secrets set WHILEAWAY_KEY=$(openssl rand -hex 18) --app whileaway
+#   fly secrets set WHILEAWAY_METRICS_TOKEN=$(openssl rand -hex 24) --app whileaway
+#   fly deploy --app whileaway --ha=false
+app = "whileaway"
 primary_region = "iad"
 
 [build]
@@ -19,7 +19,7 @@ primary_region = "iad"
 [env]
   PORT = "8080"
   AUTH_MODE = "hosted"
-  WHILEAWAY_URL = "https://whileaway-bus.fly.dev"
+  WHILEAWAY_URL = "https://whileaway.fly.dev"
   # Durable state on the mounted volume: our bus store (sqlite) + Better Auth's own DB.
   WHILEAWAY_STORE = "sqlite"
   WHILEAWAY_STATE = "/data/whileaway.db"

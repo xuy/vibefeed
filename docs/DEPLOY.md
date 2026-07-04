@@ -1,7 +1,7 @@
 # Deploy runbook — whileaway bus (hosted)
 
-The hosted instance runs on Fly.io. Live: **https://whileaway-bus.fly.dev**
-(app `whileaway-bus`, region `iad`). Config lives in `server/fly.toml` + `server/Dockerfile`.
+The hosted instance runs on Fly.io. Live: **https://whileaway.fly.dev**
+(app `whileaway`, region `iad`). Config lives in `server/fly.toml` + `server/Dockerfile`.
 
 ## Architecture on Fly
 
@@ -18,15 +18,15 @@ The hosted instance runs on Fly.io. Live: **https://whileaway-bus.fly.dev**
 - **Deploy strategy `immediate`** (`[deploy]` in fly.toml): a single volume can't be mounted by a
   second machine during a rolling deploy, so we replace in place (brief downtime, fine at v0).
 
-## One-time setup (already done for whileaway-bus)
+## One-time setup (already done for whileaway)
 
 ```sh
 cd server
-fly apps create whileaway-bus --org personal
-fly volumes create whileaway_data --size 1 --region iad --app whileaway-bus -y
-fly secrets set WHILEAWAY_AUTH_SECRET="$(openssl rand -hex 32)" --app whileaway-bus
-fly secrets set WHILEAWAY_KEY="$(openssl rand -hex 18)" --app whileaway-bus
-fly secrets set WHILEAWAY_METRICS_TOKEN="$(openssl rand -hex 24)" --app whileaway-bus
+fly apps create whileaway --org personal
+fly volumes create whileaway_data --size 1 --region iad --app whileaway -y
+fly secrets set WHILEAWAY_AUTH_SECRET="$(openssl rand -hex 32)" --app whileaway
+fly secrets set WHILEAWAY_KEY="$(openssl rand -hex 18)" --app whileaway
+fly secrets set WHILEAWAY_METRICS_TOKEN="$(openssl rand -hex 24)" --app whileaway
 ```
 
 Secrets (write-only — Fly can't read them back; record the metrics token where you can find it):
@@ -40,7 +40,7 @@ Secrets (write-only — Fly can't read them back; record the metrics token where
 
 ```sh
 cd server
-fly deploy --app whileaway-bus --ha=false
+fly deploy --app whileaway --ha=false
 ```
 
 The build compiles `better-sqlite3` from source (the Dockerfile installs `python3 make g++` for
@@ -49,11 +49,11 @@ node-gyp), migrates the auth schema, then boots.
 ## Verify
 
 ```sh
-curl -s https://whileaway-bus.fly.dev/health            # {"ok":true}
-curl -s https://whileaway-bus.fly.dev/privacy -o /dev/null -w "%{http_code}\n"   # 200
+curl -s https://whileaway.fly.dev/health            # {"ok":true}
+curl -s https://whileaway.fly.dev/privacy -o /dev/null -w "%{http_code}\n"   # 200
 curl -s -H "Authorization: Bearer $WHILEAWAY_METRICS_TOKEN" \
-     https://whileaway-bus.fly.dev/v1/metrics            # seen-rate + funnel
-fly logs --app whileaway-bus                             # boot + magic-link lines
+     https://whileaway.fly.dev/v1/metrics            # seen-rate + funnel
+fly logs --app whileaway                             # boot + magic-link lines
 ```
 
 Full signup→seen E2E: POST `/api/auth/sign-in/magic-link` with an email, read the verify URL from
@@ -72,7 +72,7 @@ cards aren't double-counted. Also: `signups`, `tokensMinted`, `pushes`, `deliver
 - **Email transport for public signup.** Magic links currently only print to the server log
   (`sendMagicLink` in `server/src/auth.js`). Real users can't sign up until an email provider
   (e.g. Resend) is wired. Until then, signup works only by reading the link from `fly logs`.
-- **Custom production domain.** Currently on `whileaway-bus.fly.dev`. To add one:
+- **Custom production domain.** Currently on `whileaway.fly.dev`. To add one:
   `fly certs add <domain>`, point DNS, then update `WHILEAWAY_URL` + the extension's default base.
 - **Google OAuth** (optional): set the two `WHILEAWAY_GOOGLE_*` secrets to enable the Google button.
 
