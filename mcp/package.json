@@ -1,6 +1,6 @@
 {
   "name": "whileaway-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server that turns any agent into a whileaway producer — push cards to your idle-moment feed in one sentence.",
   "type": "module",
   "bin": {
@@ -20,6 +20,28 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "Apache-2.0",
+  "author": "Eric Xu",
+  "homepage": "https://whileaway.honestapp.org",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xuy/vibefeed.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/xuy/vibefeed/issues"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "whileaway",
+    "feed",
+    "ai-agent",
+    "rss",
+    "self-hosted",
+    "spaced-repetition"
   ]
 }
